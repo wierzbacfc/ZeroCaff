@@ -50,6 +50,23 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Handle notification click on Android / mobile devices
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(withBase('/'));
+      }
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   // Ignore non-GET requests or chrome-extension URLs
   if (event.request.method !== 'GET') return;

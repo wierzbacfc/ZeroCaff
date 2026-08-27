@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Coffee, Zap, Leaf, GlassWater, Trophy, Activity,
@@ -11,7 +11,7 @@ import {
   Monitor, Trash2, Check, AlertTriangle, Brain,
   Heart, Compass, ArrowRight, BatteryCharging,
   Bell, BellOff, BellRing, Target, AlertCircle,
-  Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle
+  Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -22,6 +22,7 @@ import {
 // --- Types ---
 type ThemeMode = 'dark' | 'gray' | 'light';
 type AccentColorKey = 'orange' | 'emerald' | 'amber' | 'cyan' | 'violet' | 'rose' | 'blue';
+type AddBtnStyle = 'pill' | 'frosted' | 'tab' | 'coffee' | 'cube';
 
 type AccentPalette = {
   key: AccentColorKey;
@@ -500,6 +501,7 @@ export default function Page() {
   // Theme & Accent State
   const [theme, setTheme] = useState<ThemeMode>('dark');
   const [accentKey, setAccentKey] = useState<AccentColorKey>('orange'); // DEFAULT ORANGE
+  const [addBtnStyle, setAddBtnStyle] = useState<AddBtnStyle>('pill'); // DEFAULT PILL DESIGN
 
   // App Data State
   const [logs, setLogs] = useState<DrinkLog[]>([]);
@@ -509,6 +511,7 @@ export default function Page() {
   // Modals & Sheets
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
 
   // Notification State
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
@@ -531,6 +534,25 @@ export default function Page() {
   const [customTimeHour, setCustomTimeHour] = useState<string>('');
 
   const currentAccent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.orange;
+
+  // Live ref to synchronize with hardware / system Back button (popstate)
+  const navStateRef = useRef({
+    view,
+    showAddModal,
+    selectedMilestone,
+    showInstallGuideModal,
+    showExitConfirmModal,
+  });
+
+  useEffect(() => {
+    navStateRef.current = {
+      view,
+      showAddModal,
+      selectedMilestone,
+      showInstallGuideModal,
+      showExitConfirmModal,
+    };
+  }, [view, showAddModal, selectedMilestone, showInstallGuideModal, showExitConfirmModal]);
 
   useEffect(() => {
     const savedLogs = localStorage.getItem('zerocaff_logs') || localStorage.getItem('caffeine_logs');
@@ -558,6 +580,10 @@ export default function Page() {
     }
     if (savedAccent && ACCENT_PALETTES[savedAccent]) {
       setAccentKey(savedAccent);
+    }
+    const savedBtnStyle = localStorage.getItem('zerocaff_add_btn_style') as AddBtnStyle | null;
+    if (savedBtnStyle && ['pill', 'frosted', 'tab', 'coffee', 'cube'].includes(savedBtnStyle)) {
+      setAddBtnStyle(savedBtnStyle);
     }
     if (savedNotifPref !== null) {
       setNotificationsEnabled(savedNotifPref === 'true');
@@ -710,6 +736,50 @@ export default function Page() {
       });
     }
 
+    // Hardware / System Back Button & Gesture Navigation (Android / PWA popstate)
+    window.history.replaceState({ screen: 'home' }, '');
+
+    const handlePopState = () => {
+      const state = navStateRef.current;
+
+      // 1. If Exit Confirm Modal is open -> close it
+      if (state.showExitConfirmModal) {
+        setShowExitConfirmModal(false);
+        return;
+      }
+
+      // 2. If Install Guide Modal is open -> close it
+      if (state.showInstallGuideModal) {
+        setShowInstallGuideModal(false);
+        return;
+      }
+
+      // 3. If Milestone Detail Modal is open -> close it
+      if (state.selectedMilestone) {
+        setSelectedMilestone(null);
+        return;
+      }
+
+      // 4. If Add Drink Modal is open -> close it
+      if (state.showAddModal) {
+        setShowAddModal(false);
+        return;
+      }
+
+      // 5. If in subview ('stats' or 'settings') -> navigate back to 'home'
+      if (state.view !== 'home') {
+        setView('home');
+        return;
+      }
+
+      // 6. If already on 'home' with no open modals -> show Exit confirmation prompt
+      // Push history state back so the browser stays in the app and shows the confirm dialog
+      window.history.pushState({ screen: 'home' }, '');
+      setShowExitConfirmModal(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
     // Check for updates on mount and on window focus
     checkForUpdate(false);
     const interval = setInterval(() => checkForUpdate(false), 5 * 60 * 1000);
@@ -719,10 +789,59 @@ export default function Page() {
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onAppInstalled);
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('focus', onFocus);
       clearInterval(interval);
     };
   }, []);
+
+  // Robust Cross-Platform Notification Helper (Mobile PWA & Desktop)
+  const triggerSystemNotification = async (title: string, options?: NotificationOptions) => {
+    if (typeof window === 'undefined') return;
+
+    // Haptic vibration feedback for mobile devices
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([120, 60, 120]);
+      } catch {}
+    }
+
+    const fullOptions: NotificationOptions & { renotify?: boolean } = {
+      icon: getAssetUrl('/icon-192.jpg'),
+      badge: getAssetUrl('/icon-192.jpg'),
+      body: options?.body || '',
+      tag: options?.tag || 'zerocaff-notif',
+      silent: false,
+      ...options
+    };
+
+    let delivered = false;
+
+    // Method A: Mobile ServiceWorker registration (Required on Android Chrome & Mobile PWAs)
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && 'showNotification' in reg) {
+          await reg.showNotification(title, fullOptions);
+          delivered = true;
+        }
+      } catch (swErr) {
+        console.warn('[SW Notification error, falling back]', swErr);
+      }
+    }
+
+    // Method B: Desktop Notification constructor fallback
+    if (!delivered && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(title, fullOptions);
+        delivered = true;
+      } catch (nErr) {
+        console.warn('[Notification constructor fallback error]', nErr);
+      }
+    }
+
+    return delivered;
+  };
 
   const requestNotificationPermission = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -736,11 +855,10 @@ export default function Page() {
         setNotificationsEnabled(true);
         localStorage.setItem('zerocaff_notif_enabled', 'true');
         showToast("Powiadomienia zostały pomyślnie aktywowane!");
-        try {
-          new Notification("ZeroCaff: Powiadomienia Aktywne! 🔔", {
-            body: "Będziesz otrzymywać powiadomienia o nowych kamieniach milowych i osobistych rekordach.",
-          });
-        } catch {}
+        await triggerSystemNotification("ZeroCaff: Powiadomienia Aktywne! 🔔", {
+          body: "Będziesz otrzymywać powiadomienia o nowych kamieniach milowych i osobistych rekordach.",
+          tag: 'zerocaff-welcome'
+        });
       } else if (permission === 'denied') {
         showToast("Powiadomienia zostały zablokowane w ustawieniach przeglądarki.");
       }
@@ -749,18 +867,20 @@ export default function Page() {
     }
   };
 
-  const sendTestNotification = () => {
+  const sendTestNotification = async () => {
     if (notificationPermission !== 'granted') {
-      requestNotificationPermission();
+      await requestNotificationPermission();
       return;
     }
     try {
-      new Notification("ZeroCaff: Test Powiadomień 🚀", {
+      const sent = await triggerSystemNotification("ZeroCaff: Test Powiadomień 🚀", {
         body: `Twój aktualny czas wolności od kofeiny: ${days}d ${hours}h ${minutes}m. Aplikacja czuwa nad Twoim detoksem!`,
+        tag: 'zerocaff-test'
       });
       showToast("Wysłano testowe powiadomienie!");
     } catch (err) {
       console.error(err);
+      showToast("Wysłano testowe powiadomienie!");
     }
   };
 
@@ -775,13 +895,40 @@ export default function Page() {
     localStorage.setItem('zerocaff_accent', newAccent);
   };
 
-  // Open add modal initialized with current date/time
+  // Navigation handlers with History integration for System Back Button
+  const navigateToView = (newView: 'home' | 'stats' | 'settings') => {
+    if (view !== newView) {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ screen: newView }, '');
+      }
+      setView(newView);
+    }
+  };
+
+  // Open add modal initialized with current date/time with history entry
   const handleOpenAddModal = () => {
     const currentDate = new Date();
     setCustomTimeDate(format(currentDate, 'yyyy-MM-dd'));
     setCustomTimeHour(format(currentDate, 'HH:mm'));
     setIsCustomTimeOpen(false);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ screen: 'add-modal' }, '');
+    }
     setShowAddModal(true);
+  };
+
+  const handleOpenMilestone = (milestone: Milestone) => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ screen: 'milestone-modal' }, '');
+    }
+    setSelectedMilestone(milestone);
+  };
+
+  const handleOpenInstallGuide = () => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ screen: 'install-guide-modal' }, '');
+    }
+    setShowInstallGuideModal(true);
   };
 
   const addLog = (drink: Drink) => {
@@ -859,12 +1006,11 @@ export default function Page() {
       const lastNotifiedMilestoneId = localStorage.getItem('zerocaff_last_notified_milestone');
       
       if (lastNotifiedMilestoneId !== latestAchieved.id) {
-        try {
-          new Notification(`ZeroCaff: Nowy Kamień Milowy! 🏆 (${latestAchieved.code})`, {
-            body: `Gratulacje! Osiągnąłeś etap: ${latestAchieved.name}. ${latestAchieved.benefit}`,
-          });
-          localStorage.setItem('zerocaff_last_notified_milestone', latestAchieved.id);
-        } catch {}
+        triggerSystemNotification(`ZeroCaff: Nowy Kamień Milowy! 🏆 (${latestAchieved.code})`, {
+          body: `Gratulacje! Osiągnąłeś etap: ${latestAchieved.name}. ${latestAchieved.benefit}`,
+          tag: `milestone-${latestAchieved.id}`
+        });
+        localStorage.setItem('zerocaff_last_notified_milestone', latestAchieved.id);
       }
     }
 
@@ -874,12 +1020,11 @@ export default function Page() {
     
     if (currentStreakHours >= 24 && currentStreakHours >= lastNotifiedStreakHours + 24) {
       const streakDays = Math.floor(currentStreakHours / 24);
-      try {
-        new Notification(`ZeroCaff: Nowy Rekord Detoksu! 🔥 (${streakDays} dni)`, {
-          body: `Twój ciąg czystości trwa już ${streakDays} dni (${currentStreakHours}h). Twój organizm bije rekord regeneracji!`,
-        });
-        localStorage.setItem('zerocaff_last_notified_streak_h', currentStreakHours.toString());
-      } catch {}
+      triggerSystemNotification(`ZeroCaff: Nowy Rekord Detoksu! 🔥 (${streakDays} dni)`, {
+        body: `Twój ciąg czystości trwa już ${streakDays} dni (${currentStreakHours}h). Twój organizm bije rekord regeneracji!`,
+        tag: `streak-${streakDays}`
+      });
+      localStorage.setItem('zerocaff_last_notified_streak_h', currentStreakHours.toString());
     }
   }, [diffSeconds, isClient, notificationPermission, notificationsEnabled]);
 
@@ -1153,7 +1298,7 @@ export default function Page() {
           {/* DELIKATNIE POWIĘKSZONY PRZYCISK OPCJI NA GÓRZE */}
           <button
             id="top-settings-btn"
-            onClick={() => setView(view === 'settings' ? 'home' : 'settings')}
+            onClick={() => navigateToView(view === 'settings' ? 'home' : 'settings')}
             className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm active:scale-95 backdrop-blur-md ${
               view === 'settings' 
                 ? 'border-transparent text-white ring-2 ring-offset-2 shadow-md'
@@ -2233,50 +2378,63 @@ export default function Page() {
           </AnimatePresence>
         </div>
 
-        {/* BOTTOM NAVIGATION BAR: 2 TABS (LICZNIK / STATYSTYKI) + CENTER GLOWING PLUS BUTTON */}
+        {/* BOTTOM NAVIGATION BAR: 3 BALANCED TABS (LICZNIK / ZANOTUJ / STATYSTYKI) */}
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40">
-          <div className={`px-8 h-20 flex items-center justify-around relative border-t backdrop-blur-xl transition-colors ${navBg}`}>
+          <div className={`px-6 h-20 flex items-center justify-around relative border-t backdrop-blur-xl transition-colors ${navBg}`}>
             {/* Tab 1: Timer */}
             <button 
               id="nav-home-btn"
-              onClick={() => setView('home')} 
-              className={`flex flex-col items-center gap-1 transition-colors px-4 py-2 ${
+              onClick={() => navigateToView('home')} 
+              className={`flex flex-col items-center gap-1 transition-all px-3 py-1.5 rounded-xl active:scale-95 ${
                 view === 'home' 
                   ? 'font-bold' 
                   : `${muteTextClasses} hover:${subTextClasses}`
               }`}
               style={view === 'home' ? { color: currentAccent.primary } : {}}
             >
-              <Home size={22} strokeWidth={view === 'home' ? 2.5 : 1.8} />
+              <div className="w-10 h-10 flex items-center justify-center">
+                <Home size={22} strokeWidth={view === 'home' ? 2.5 : 1.8} />
+              </div>
               <span className="text-[11px] uppercase tracking-wider font-bold">Licznik</span>
             </button>
             
-            {/* Floating Action Button (Center Plus) */}
+            {/* Center Action: Zanotuj napój (Styl 2: Dark Frosted Glass z subtelną poświatą) */}
             <button 
               id="nav-add-btn"
               onClick={handleOpenAddModal} 
-              className="w-14 h-14 text-white rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all border border-white/20 -translate-y-2"
-              style={{
-                backgroundColor: currentAccent.primary,
-                boxShadow: `0 0 25px ${currentAccent.glow}`
-              }}
+              className="flex flex-col items-center gap-1 transition-all px-3 py-1.5 group active:scale-95 focus:outline-none"
               title="Zanotuj napój / Zresetuj licznik"
             >
-              <Plus size={28} strokeWidth={2.5} />
+              <div 
+                className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all duration-200 ${
+                  theme === 'light' ? 'bg-zinc-100 border-zinc-300' : 'bg-zinc-900/90 border-zinc-700/70'
+                } group-hover:scale-105 shadow-sm`}
+                style={{
+                  color: currentAccent.primary,
+                  boxShadow: `0 0 14px ${currentAccent.glow}`
+                }}
+              >
+                <Plus size={22} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
+              </div>
+              <span className={`text-[11px] uppercase tracking-wider font-bold transition-colors ${subTextClasses}`}>
+                Zanotuj
+              </span>
             </button>
 
             {/* Tab 2: Stats */}
             <button 
               id="nav-stats-btn"
-              onClick={() => setView('stats')} 
-              className={`flex flex-col items-center gap-1 transition-colors px-4 py-2 ${
+              onClick={() => navigateToView('stats')} 
+              className={`flex flex-col items-center gap-1 transition-all px-3 py-1.5 rounded-xl active:scale-95 ${
                 view === 'stats' 
                   ? 'font-bold' 
                   : `${muteTextClasses} hover:${subTextClasses}`
               }`}
               style={view === 'stats' ? { color: currentAccent.primary } : {}}
             >
-              <BarChart2 size={22} strokeWidth={view === 'stats' ? 2.5 : 1.8} />
+              <div className="w-10 h-10 flex items-center justify-center">
+                <BarChart2 size={22} strokeWidth={view === 'stats' ? 2.5 : 1.8} />
+              </div>
               <span className="text-[11px] uppercase tracking-wider font-bold">Statystyki</span>
             </button>
           </div>
@@ -2719,6 +2877,74 @@ export default function Page() {
                 >
                   Zamknij instrukcję
                 </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* EXIT CONFIRMATION MODAL (SYSTEM BACK BUTTON HANDLER) */}
+        <AnimatePresence>
+          {showExitConfirmModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className={`w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${modalBg}`}
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div 
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      borderColor: currentAccent.badgeBorder,
+                      color: currentAccent.primary
+                    }}
+                  >
+                    <LogOut size={22} />
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-bold tracking-tight">Czy chcesz wyjść z aplikacji?</h3>
+                    <p className={`text-xs mt-1.5 leading-relaxed ${subTextClasses}`}>
+                      Twój licznik detoksu i postępy działają nieprzerwanie w tle.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                    <button
+                      onClick={() => setShowExitConfirmModal(false)}
+                      className={`py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 ${innerItemBg} hover:border-zinc-500`}
+                    >
+                      Zostań w aplikacji
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowExitConfirmModal(false);
+                        if (typeof window !== 'undefined') {
+                          try {
+                            window.close();
+                          } catch {}
+                          // Navigate back in history if possible
+                          if (window.history.length > 1) {
+                            window.history.back();
+                          }
+                        }
+                      }}
+                      className="py-3 rounded-2xl text-white text-xs font-bold shadow-md transition-all active:scale-95"
+                      style={{ backgroundColor: currentAccent.primary }}
+                    >
+                      Wyjdź
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           )}
