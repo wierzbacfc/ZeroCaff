@@ -1,7 +1,10 @@
 import type {NextConfig} from 'next';
 
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const repoName = process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY.split('/')[1] : '';
+const isUserOrgPage = repoName.toLowerCase().endsWith('.github.io');
+const detectedBasePath = (isGithubActions && repoName && !isUserOrgPage) ? `/${repoName}` : '';
+const effectiveBasePath = process.env.NEXT_PUBLIC_BASE_PATH || (isGithubActions ? detectedBasePath : '');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -11,11 +14,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  env: {
+    NEXT_PUBLIC_BASE_PATH: effectiveBasePath,
+  },
   ...(isGithubActions
     ? {
         output: 'export',
-        basePath: basePath || undefined,
-        assetPrefix: basePath || undefined,
+        basePath: effectiveBasePath || undefined,
+        assetPrefix: effectiveBasePath || undefined,
         trailingSlash: true,
       }
     : {}),
