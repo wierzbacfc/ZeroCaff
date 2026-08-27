@@ -6,12 +6,13 @@ import {
   Coffee, Zap, Leaf, GlassWater, Trophy, Activity,
   Plus, X, TrendingUp, TrendingDown, RotateCcw, Home, BarChart2,
   Calendar, Flame, Sparkles, CheckCircle2, Lock,
-  Clock, Award, ShieldCheck, ChevronRight, Info,
-  Settings, Palette, Sun, Moon, SunMedium, Sunset,
+  Clock, Award, ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, Info,
+  Settings, Palette, Sun, Moon, SunMedium, Sunset, Sunrise, CloudMoon,
   Monitor, Trash2, Check, AlertTriangle, Brain,
   Heart, Compass, ArrowRight, BatteryCharging,
   Bell, BellOff, BellRing, Target, AlertCircle,
-  Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut
+  Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut,
+  CalendarDays
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -173,19 +174,31 @@ const DRINKS: Drink[] = [
   { id: 'tea', name: 'Herbata Czarna/Zielona', mg: 30, icon: Leaf, color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30', accentColor: '#10b981' },
 ];
 
-// --- Comprehensive Milestones (Rich Early Stages + Long Term) ---
+// --- Comprehensive Milestones (Rich Early Stages + Intermediate + Long Term) ---
 const MILESTONES: Milestone[] = [
+  {
+    id: 'm-1h',
+    code: '1H',
+    name: '1 Godzina',
+    seconds: 1 * 3600,
+    phase: 'Faza 1: Szczyt & Początek Filtracji',
+    benefit: 'Hamowanie wchłaniania i szczytowy metabolizm',
+    description: 'Dokładnie teraz stężenie kofeiny w Twojej krwi osiąga swoje absolutne maksimum. Cząsteczki przekroczyły już barierę krew-mózg, wymuszając nienaturalny wyrzut adrenaliny i noradrenaliny. Twoja wątroba właśnie aktywuje produkcję enzymu CYP1A2, rozpoczynając wielogodzinny proces filtrowania toksyny z krwioobiegu. To moment, w którym Twój organizm przestaje przyjmować, a zaczyna aktywnie walczyć o powrót do naturalnej homeostazy.',
+    symptoms: 'Podwyższone ciśnienie krwi, przyspieszone tętno, spłycony oddech oraz sztucznie napędzona czujność maskująca prawdziwe zmęczenie.',
+    tips: 'Wypij dużą szklankę wody mineralnej. Pomożesz w ten sposób nerkom, które za chwilę rozpoczną intensywne wydalanie zmetabolizowanych związków kofeiny.',
+    mentalBoost: 'Twoja świadoma decyzja zaczyna procentować. Ten stymulant właśnie osiągnął swój szczyt – od tej sekundy będzie go w Tobie już tylko mniej.'
+  },
   {
     id: 'm-2h',
     code: '2H',
     name: '2 Godziny',
     seconds: 2 * 3600,
     phase: 'Faza 1: Początek Eliminacji',
-    benefit: 'Spadek szczytowego stężenia',
-    description: 'Kofeina osiągnęła swój maksymalny poziom we krwi i wątrobowe enzymy (cytochrom P450 1A2) rozpoczęły intensywny proces jej rozkładu na paraksantynę, teobrominę i teofilinę.',
-    symptoms: 'Możesz odczuwać pierwsze subtelne uspokojenie pulsu oraz spadek sztucznego pobudzenia.',
-    tips: 'Wypij dużą szklankę wody mineralnej z odrobiną cytryny, aby wesprzeć filtrację nerkową.',
-    mentalBoost: 'Pierwszy krok został postawiony. Twoje ciało zaczyna pracować na własnych obrotach.'
+    benefit: 'Spadek szczytowego stężenia i praca enzymów',
+    description: 'Enzym cytochrom P450 1A2 intensywnie rozbija cząsteczki kofeiny na trzy kluczowe metabolity: paraksantynę (zwiększającą rozkład tłuszczu), teobrominę (rozszerzającą naczynia) i teofilinę (rozluźniającą mięśnie gładkie). Mózg powoli orientuje się, że dopływ zewnętrznego stymulanta został odcięty. Blokada receptorów adenozynowych powoli ulega poluzowaniu, a układ nerwowy zaczyna obniżać częstotliwość fałszywych alarmów stresowych.',
+    symptoms: 'Pierwsze subtelne uspokojenie pulsu. Możesz odczuwać delikatny spadek euforycznego "haju" i powolny powrót do realistycznego odczuwania poziomu własnej energii.',
+    tips: 'Zrób 5 głębokich oddechów przeponowych (wdech nosem 4s, wydech ustami 6s). To zasygnalizuje nerwowi błędnemu, że zagrożenie minęło i można wyłączyć tryb "walcz lub uciekaj".',
+    mentalBoost: 'System oczyszczania działa na pełnych obrotach. Pozwalasz swojemu ciału na naturalną, biologiczną detoksykację.'
   },
   {
     id: 'm-4h',
@@ -193,11 +206,11 @@ const MILESTONES: Milestone[] = [
     name: '4 Godziny',
     seconds: 4 * 3600,
     phase: 'Faza 1: Uwalnianie Receptorów',
-    benefit: 'Uwalnianie receptorów A1 i A2A',
-    description: 'Cząsteczki kofeiny powoli odczepiają się od receptorów adenozynowych w korze mózgowej. Zablokowana dotąd adenozyna – naturalny wskaźnik zmęczenia – zaczyna docierać do neuronów.',
-    symptoms: 'Może pojawić się lekka senność lub chęć sięgnięcia po kolejną kawę z przyzwyczajenia.',
-    tips: 'Zrób 5 głębokich wdechów lub krótki 2-minutowy spacer po pokoju zamiast iść do kuchni.',
-    mentalBoost: 'To tylko chwilowy impuls nawykowy – Twoja wola jest silniejsza niż nawyk ręki.'
+    benefit: 'Demaskowanie naturalnego zmęczenia',
+    description: 'Uwalnianie receptorów A1 i A2A w korze mózgowej wkracza w decydującą fazę. Kofeina, która do tej pory udawała adenozynę (kluczowy neuroprzekaźnik snu), zsuwa się z receptorów. Teraz skumulowana adenozyna – naturalny biochemiczny wskaźnik zmęczenia – gwałtownie dociera do neuronów. Mózg w końcu otrzymuje prawdziwą, niezakłóconą informację o tym, ile energii faktycznie posiada Twoje ciało.',
+    symptoms: 'Odtajnienie zmęczenia: może pojawić się nagła, wyraźna senność, ziewanie, spadek motywacji oraz automatyczna, nawykowa chęć pójścia po kolejną kawę (tzw. zjazd kofeinowy).',
+    tips: 'Nie daj się oszukać własnemu mózgowi – to tylko nawyk dopaminowy. Zamiast sięgać po kubek, wstań, przeciągnij się, przewietrz pokój lub zrób 3 minuty szybkiego spaceru.',
+    mentalBoost: 'Czujesz zmęczenie? To świetnie! To dowód na to, że Twoja naturalna biologia wreszcie odzyskuje głos. Jesteś silniejszy niż ten chwilowy spadek formy.'
   },
   {
     id: 'm-6h',
@@ -205,11 +218,11 @@ const MILESTONES: Milestone[] = [
     name: '6 Godzin',
     seconds: 6 * 3600,
     phase: 'Faza 1: Okres Półtrwania (T½)',
-    benefit: '50% kofeiny zmetabolizowane',
-    description: 'Osiągasz biologiczny okres półtrwania kofeiny. Połowa przyjętej dawki została zneutralizowana. Twoje naczynia krwionośne delikatnie się rozszerzają, ułatwiając swobodny przepływ krwi.',
-    symptoms: 'Uczucie zjazdu energetycznego u osób nawykowo pijących kawę po południu.',
-    tips: 'Zjedz przekąskę bogatą w magnez (orzechy, migdały, banan) lub wypij napar z mięty.',
-    mentalBoost: 'Połowa trucizny stymulacyjnej zniknęła z Twojego krwioobiegu!'
+    benefit: '50% stymulanta bezpowrotnie usunięte',
+    description: 'Osiągasz kluczowy biologiczny kamień milowy: okres półtrwania (half-life) kofeiny. Oznacza to, że wątrobie udało się przefiltrować i zneutralizować dokładnie połowę dawki. Twoje naczynia krwionośne w mózgu, dotychczas nienaturalnie zwężone, zaczynają się rozszerzać, przywracając prawidłowy, swobodny przepływ krwi i tlenu do tkanki nerwowej. Wyrzut kortyzolu (hormonu stresu) wyraźnie zwalnia.',
+    symptoms: 'Brak sztucznego napięcia, możliwe delikatne "mgliste" myślenie (brain fog) lub uczucie ociężałości, zwłaszcza u osób pijących regularnie duże dawki.',
+    tips: 'To idealny moment na nawodnienie i lekką przekąskę bogatą w magnez (np. migdały, gorzka czekolada 90%), co pomoże ustabilizować poziom cukru we krwi.',
+    mentalBoost: 'Półmetek pierwszego starcia za Tobą! Organizm wykonał gigantyczną pracę. Połowa toksyny już nigdy nie wróci do Twojego układu nerwowego.'
   },
   {
     id: 'm-8h',
@@ -217,11 +230,11 @@ const MILESTONES: Milestone[] = [
     name: '8 Godzin',
     seconds: 8 * 3600,
     phase: 'Faza 1: Równowaga Krążenia',
-    benefit: 'Normalizacja ciśnienia i pulsu',
-    description: 'Układ współczulny (odpowiedzialny za reakcję stresową "walcz lub uciekaj") przechodzi w stan spoczynku. Ciśnienie tętnicze i tętno spoczynkowe obniżają się do naturalnego poziomu.',
-    symptoms: 'Poczucie fizycznego odprężenia mięśni karku i barków.',
-    tips: 'Zwróć uwagę na głębokość oddechu – staje się on pełniejszy i spokojniejszy.',
-    mentalBoost: 'Twoje serce bije teraz bez sztucznego poganiania.'
+    benefit: 'Normalizacja układu sercowo-naczyniowego',
+    description: 'Układ współczulny przechodzi z trybu ciągłego alertu w stan spoczynku. Ciśnienie tętnicze krwi stabilizuje się, a tętno spoczynkowe obniża się do naturalnego, bezpiecznego dla serca poziomu. Nadnercza przestają być stymulowane do ciągłej, wyczerpującej produkcji adrenaliny. Dbasz właśnie o żywotność i zdrowie swojego mięśnia sercowego, zdejmując z niego niewidzialny ciężar.',
+    symptoms: 'Wyraźne poczucie fizycznego odprężenia mięśni (szczególnie karku, barków i żuchwy), głębszy i wolniejszy oddech, czasem umiarkowany ból głowy związany z rozszerzaniem naczyń.',
+    tips: 'Jeśli odczuwasz napięciowy ból głowy, unikaj tabletek z kofeiną. Wypij ciepły napar z melisy lub rumianku i wykonaj masaż skroni.',
+    mentalBoost: 'Twoje serce bije teraz swoim własnym, miarowym rytmem, bez żadnego chemicznego poganiania. To brzmienie prawdziwego zdrowia.'
   },
   {
     id: 'm-12h',
@@ -229,241 +242,110 @@ const MILESTONES: Milestone[] = [
     name: '12 Godzin',
     seconds: 12 * 3600,
     phase: 'Faza 2: Głębokie Oczyszczanie',
-    benefit: 'Prawie 75% kofeiny usunięte',
-    description: 'Poziom kofeiny w osoczu spadł do minimalnych wartości. Szyszynka może bez przeszkód wydzielać melatoninę, niezbędną do inicjacji naturalnego rytmu dobowego.',
-    symptoms: 'Naturalna, zdrowa senność wieczorna bez niepokoju i gonitwy myśli.',
-    tips: 'Wywietrz sypialnię i odłóż ekran telefonu na 45 minut przed snem.',
-    mentalBoost: 'Dziś w nocy Twój mózg doświadczy pierwszego od dawna nieskażonego snu.'
+    benefit: 'Uwolnienie szyszynki i start produkcji melatoniny',
+    description: 'Poziom kofeiny w Twojej krwi spadł do ułamkowych, śladowych wartości (ok. 25% dawki początkowej). Mózgowy ośrodek snu – szyszynka – może wreszcie bez przeszkód i opóźnień wydzielać melatoninę. Ten kluczowy hormon nie tylko reguluje rytm dobowy, ale też jest potężnym antyoksydantem naprawiającym DNA podczas snu. Kofeina już nie blokuje jego produkcji.',
+    symptoms: 'Naturalna, głęboka senność wieczorna, wolna od sztucznego niepokoju i gonitwy myśli (racing thoughts), która często towarzyszy zasypianiu po kawie.',
+    tips: 'Przygotuj się na doskonały sen. Zredukuj światło niebieskie, wywietrz sypialnię i zrezygnuj z wpatrywania się w ekrany na godzinę przed snem.',
+    mentalBoost: 'Dziś w nocy Twój mózg doświadczy pierwszego od bardzo dawna nieskażonego, głęboko regenerującego snu. Rano obudzisz się silniejszy.'
   },
   {
-    id: 'm-16h',
-    code: '16H',
-    name: '16 Godzin',
-    seconds: 16 * 3600,
-    phase: 'Faza 2: Regeneracja Nocna',
-    benefit: 'Głęboka faza SWS & REM',
-    description: 'Brak kofeiny umożliwia pełne przejście w fazę snu wolnofalowego (NREM faza 3/4). W tym czasie mózg uruchamia układ glimfatyczny, oczyszczający tkankę mózgową z toksycznych metabolitów.',
-    symptoms: 'Możliwe żywsze, bardziej wyraziste sny oraz dłuższe okresy nieprzerwanego snu.',
-    tips: 'Po przebudzeniu wypij szklankę letniej wody, aby nawodnić komórki.',
-    mentalBoost: 'Poranek bez chemicznego zapłonu to początek prawdziwej niezależności.'
-  },
-  {
-    id: 'm-1d',
-    code: '1D',
-    name: '24 Godziny (1 Dzień)',
+    id: 'm-24h',
+    code: '24H',
+    name: '1 Doba',
     seconds: 24 * 3600,
-    phase: 'Faza 2: Pierwsza Doba Wolności',
-    benefit: 'Całkowita eliminacja z krwioobiegu',
-    description: 'We krwi nie ma już aktywnej kofeiny. Receptory adenozynowe są w pełni odsłonięte. Organizm rozpoczyna proces dostrajania gęstości receptorów do naturalnych warunków.',
-    symptoms: 'Może pojawić się lekki tępy ból głowy (efekt rozszerzenia naczyń mózgowych) lub znużenie.',
-    tips: 'Zadbaj o elektrolity, zjedz ciepły posiłek i nie forsuj się intensywnym treningiem.',
-    mentalBoost: 'Przetrwałeś całą dobę! To psychologiczny kamień milowy najwyższej wagi.'
+    phase: 'Faza 2: Szczyt Odstawienia',
+    benefit: '100% kofeiny wyeliminowane z organizmu',
+    description: 'To historyczny moment. Po 24 godzinach stężenie kofeiny w Twoim ciele wynosi absolutne ZERO. Organizm jest całkowicie wolny od stymulanta, ale układ nerwowy musi teraz na nowo nauczyć się funkcjonować bez "chemicznych kul". Receptory w mózgu, dotąd otępiane regularnymi dawkami, wykazują ekstremalną nadwrażliwość na adenozynę. Rozpoczyna się proces neuroadaptacji.',
+    symptoms: 'Możesz odczuwać apogeum objawów odstawiennych: pulsujące bóle głowy (spowodowane drastycznym rozszerzeniem naczyń krwionośnych w mózgu), drażliwość, wahania nastroju, sztywność mięśni i silną chęć (craving) wypicia kawy.',
+    tips: 'Pij ogromne ilości wody, stosuj zimne okłady na kark i daj sobie absolutne prawo do odpoczynku. Jeśli możesz, utnij sobie 20-minutową drzemkę.',
+    mentalBoost: 'Przetrwałeś najtrudniejsze 24 godziny! Ból głowy, który czujesz, to fizyczny dowód na to, że Twój mózg właśnie się leczy i przebudowuje swoje struktury.'
   },
   {
-    id: 'm-36h',
-    code: '36H',
-    name: '36 Godzin',
-    seconds: 36 * 3600,
-    phase: 'Faza 3: Szczyt Odstawienny',
-    benefit: 'Dylatacja naczyń mózgowych',
-    description: 'Kofeina zwęża naczynia mózgowe nawet o 25-30%. Po 36h przepływ krwi w naczyniach mózgu gwałtownie rośnie, co powoduje intensywne dotlenienie tkanek.',
-    symptoms: 'Szczyt objawów odstawiennych: ból głowy, spadek motywacji, wrażliwość na światło.',
-    tips: 'Zimny kompres na czoło, drzemka 20 minut, suplementacja magnezu i witamin z grupy B.',
-    mentalBoost: 'Ból głowy to fizyczny dowód na to, że naczynia krwionośne wracają do zdrowia!'
-  },
-  {
-    id: 'm-2d',
-    code: '2D',
-    name: '48 Godzin (2 Dni)',
-    seconds: 2 * 24 * 3600,
+    id: 'm-48h',
+    code: '48H',
+    name: '2 Doby',
+    seconds: 48 * 3600,
     phase: 'Faza 3: Przebudowa Receptorów',
-    benefit: 'Rozpoczęcie redukcji receptorów',
-    description: 'Mózg zauważa brak stałej blokady i zaczyna zmniejszać nadmiarową liczbę receptorów adenozyny, którą wytworzył w odpowiedzi na chroniczne picie kofeiny.',
-    symptoms: 'Mniejsza intensywność bólu głowy, fale ciepła, powolny powrót apetytu.',
-    tips: 'Pij herbatki ziołowe (rumianek, melisa, rooibos) – dają rytuał ciepłego kubka bez kofeiny.',
-    mentalBoost: 'Najgorszy fizjologiczny sztorm masz już za sobą.'
+    benefit: 'Inicjacja neuroplastyczności mózgu',
+    description: 'Rozpoczyna się fascynujący biologiczny proces: "down-regulation". Ponieważ nie dostarczasz kofeiny, mózg zauważa, że posiada zbyt dużą ilość receptorów adenozynowych (wytworzonych wcześniej w ramach obrony przed kofeiną). Organizmu używa neuroplastyczności, by dosłownie zdemontować nadmiar tych receptorów. Twoja chemia mózgu wraca do fabrycznych ustawień.',
+    symptoms: 'Utrzymujące się ogólne osłabienie i spadek nastroju z powodu chwilowego niedoboru dopaminy. Ból głowy zazwyczaj zaczyna tracić na intensywności.',
+    tips: 'Aktywność fizyczna to Twój największy sprzymierzeniec. Nawet 15 minut lekkiego truchtu lub jogi wyzwoli endorfiny i naturalnie podniesie poziom dopaminy.',
+    mentalBoost: 'Twój mózg przeprowadza teraz zaawansowaną reinżynierię własnej budowy. Jesteś w połowie drogi przez najtrudniejszy fizyczny etap odstawienia.'
   },
   {
     id: 'm-3d',
     code: '3D',
-    name: '72 Godziny (3 Dni)',
+    name: '3 Doby',
     seconds: 3 * 24 * 3600,
-    phase: 'Faza 3: Przełom Kryzysu',
-    benefit: 'Koniec ostrej fazy odstawienia',
-    description: 'Szczyt objawów fizycznych mija bezpowrotnie. Układ pokarmowy uspokaja się, błona śluzowa żołądka nie jest drażniona kwasami i związkami drażniącymi.',
-    symptoms: 'Wyraźny przypływ świeżości umysłowej, zniknięcie napięcia w skroniach.',
-    tips: 'Wybierz się na 30-minutowy spacer w słońcu, aby stymulować naturalną produkcję serotoniny.',
-    mentalBoost: 'Przełamałeś barierę 72 godzin! Statystycznie większość osób po tym etapie nie wraca.'
-  },
-  {
-    id: 'm-4d',
-    code: '4D',
-    name: '4 Dni',
-    seconds: 4 * 24 * 3600,
-    phase: 'Faza 4: Stabilizacja Dopaminy',
-    benefit: 'Równowaga szlaków nagrody',
-    description: 'Układ dopaminergiczny przestaje oczekiwać nagłych sztucznych wyrzutów dopaminy. Codzienne proste czynności zaczynają przynosić naturalną satysfakcję.',
-    symptoms: 'Mniejsza drażliwość, spokojniejsza reakcja na codzienne stresy.',
-    tips: 'Zapisz 3 rzeczy, za które jesteś dziś wdzięczny – naturalny booster dopaminowy.',
-    mentalBoost: 'Odzyskujesz kontrolę nad własnym nastrojem bez potrzeby zewnętrznych stymulantów.'
+    phase: 'Faza 3: Fizyczna Wolność',
+    benefit: 'Ustabilizowanie przepływu krwi w mózgu',
+    description: 'Po 72 godzinach odstawienia przepływ krwi i tlenu w naczyniach mózgowych wraca do normy. Najgorsze, ostre fizyczne objawy odstawienia (jak silne migreny czy mdłości) przeważnie ustępują. Twój układ nagrody (szlak mezolimbiczny) zaczyna powoli przypominać sobie, jak czerpać satysfakcję i dopaminę z naturalnych bodźców, a nie z farmakologicznego wymuszenia.',
+    symptoms: 'Wygasanie bólu głowy. Zamiast fizycznego dyskomfortu może pojawić się pustka psychologiczna lub brak poczucia "porannego rytuału".',
+    tips: 'Zastąp nawyk. Zamiast kawy, przygotuj rano yerba mate (jeśli schodzisz stopniowo), matchę, bezkofeinową kawę zbożową lub po prostu ciepłą wodę z cytryną i imbirem.',
+    mentalBoost: 'Gratulacje! Najgorszy fizyczny ból jest już za Tobą. Pokonałeś chemiczne uzależnienie. Teraz zaczyna się praca nad nawykami i psychologią.'
   },
   {
     id: 'm-5d',
     code: '5D',
     name: '5 Dni',
     seconds: 5 * 24 * 3600,
-    phase: 'Faza 4: Nawodnienie Tkanek',
-    benefit: 'Optymalna retencja wody i elektrolitów',
-    description: 'Brak diuretycznego działania kofeiny pozwala komórkom na pełne nawodnienie. Zwiększa się elastyczność skóry, a mięśnie są lepiej odżywione glikogenem.',
-    symptoms: 'Świeższy wygląd twarzy, mniejsze cienie pod oczami, brak suchości w ustach.',
-    tips: 'Obserwuj swoją skórę – staje się bardziej promienna i gładka.',
-    mentalBoost: 'Twoje ciało zatrzymuje cenne minerały zamiast bezustannie je wypłukiwać.'
-  },
-  {
-    id: 'm-6d',
-    code: '6D',
-    name: '6 Dni',
-    seconds: 6 * 24 * 3600,
-    phase: 'Faza 4: Rytm Kortyzolowy',
-    benefit: 'Naturalny poranny wyrzut energii',
-    description: 'Kortyzol (hormon wybudzający) odzyskuje swój naturalny dobowy profil – najwyższy 30 minut po przebudzeniu, a następnie łagodnie opadający ku wieczorowi.',
-    symptoms: 'Budzenie się rano bez uczucia "mgły mózgowej" i bez desperackiej potrzeby kawy.',
-    tips: 'Wystaw oczy na naturalne światło słoneczne zaraz po wstaniu z łóżka.',
-    mentalBoost: 'Twoje ciało potrafi samo produkować własną energię!'
+    phase: 'Faza 4: Powrót Naturalnej Energii',
+    benefit: 'Głęboka regeneracja nadnerczy',
+    description: 'Twoje nadnercza, które przez lata były zmuszane do nieustannego wypluwania kortyzolu i adrenaliny pod dyktando kofeiny, w końcu przechodzą w fazę głębokiej regeneracji. Zauważasz, że Twoja krzywa energetyczna w ciągu dnia staje się znacznie bardziej płaska i stabilna. Unikasz drastycznych popołudniowych spadków mocy (afternoon crash). Budzisz się z bardziej autentycznym poziomem energii.',
+    symptoms: 'Pojawiają się pierwsze momenty spontanicznej, czystej energii, niezależnej od stymulantów. Sen staje się wyczuwalnie głębszy i bardziej zwarty.',
+    tips: 'Zwróć uwagę na to, jak czujesz się około godziny 14:00-15:00. Zauważ, że dawny, obezwładniający zjazd energetyczny zniknął lub znacznie zelżał.',
+    mentalBoost: 'Odkrywasz swoją prawdziwą, rzetelną energię bazową. Nie potrzebujesz już pożyczać energii z przyszłości z lichwiarskim procentem.'
   },
   {
     id: 'm-1w',
-    code: '1T',
-    name: '1 Tydzień (7 Dni)',
+    code: '1W',
+    name: '1 Tydzień',
     seconds: 7 * 24 * 3600,
-    phase: 'Faza 5: Stabilność Energetyczna',
-    benefit: 'Koniec z popołudniowym zjazdem',
-    description: 'Całkowity brak gwałtownych spadków energetycznych o godzinie 14:00-16:00. Poziom energii jest stabilny i przewidywalny od rana do nocy.',
-    symptoms: 'Stała, wysoka wydajność w pracy przez cały dzień bez nerwowości.',
-    tips: 'Doceniaj równy puls podczas wymagających zadań umysłowych.',
-    mentalBoost: 'Pełny tydzień! Udowodniłeś sobie niezwykłą determinację i siłę charakteru.'
-  },
-  {
-    id: 'm-10d',
-    code: '10D',
-    name: '10 Dni',
-    seconds: 10 * 24 * 3600,
-    phase: 'Faza 5: Wchłanianie Minerałów',
-    benefit: 'Magnez, wapń i żelazo w pełni przyswajane',
-    description: 'Związki garbnikowe i kofeina nie blokują już wchłaniania żelaza niehemowego oraz wapnia w jelicie cienkim. Zwiększa się gęstość mineralna i siła skurczu mięśni.',
-    symptoms: 'Zanik mimowolnych drgań powiek, brak skurczów łydek, mocniejsze paznokcie.',
-    tips: 'Wzbogać dietę w zielone warzywa liściaste, nasiona dyni i kakao ceremonialne bez cukru.',
-    mentalBoost: 'Każdy kęs jedzenia odżywia Twoje ciało w 100%.'
+    phase: 'Faza 4: Reset Snu (REM & Deep Sleep)',
+    benefit: 'Drastyczna poprawa architektury snu',
+    description: 'To przełomowy tydzień. Analizy EEG osób po odstawieniu kofeiny wykazują w tym czasie znaczący wzrost udziału fazy snu głębokiego (Slow-Wave Sleep) w całkowitym czasie spoczynku. To właśnie w tej fazie dochodzi do odnowy komórkowej, wzmacniania układu odpornościowego i konsolidacji pamięci. Twój rytm okołodobowy (circadian rhythm) został niemal całkowicie zresetowany.',
+    symptoms: 'Lepsze samopoczucie rano, rzadsze wybudzenia w nocy, zwiększona klarowność umysłu (brak tzw. brain fog) oraz stabilniejszy nastrój w ciągu dnia.',
+    tips: 'To świetny czas, by zoptymalizować swoją poranną rutynę. Wykorzystaj świeżość umysłu na medytację, czytanie lub poranny trening zamiast bezmyślnego parzenia kawy.',
+    mentalBoost: 'Jesteś wolny od tygodnia. Udowodniłeś sobie, że jesteś w stanie przełamać jeden z najsilniejszych kulturowych i chemicznych nawyków świata.'
   },
   {
     id: 'm-2w',
-    code: '2T',
-    name: '2 Tygodnie (14 Dni)',
+    code: '2W',
+    name: '2 Tygodnie',
     seconds: 14 * 24 * 3600,
-    phase: 'Faza 6: Reset Adenozynowy',
-    benefit: 'Przywrócenie gęstości receptorów',
-    description: 'Gęstość i wrażliwość receptorów adenozynowych w mózgu wróciły do poziomu osoby nigdy niepijącej kawy. Twój mózg osiągnął fabryczną architekturę neurochemiczną.',
-    symptoms: 'Głęboki, regenerujący sen i niezwykła odporność na stres psychiczny.',
-    tips: 'Zauważ, jak łatwo zasypiasz – w ciągu 10-15 minut od położenia głowy na poduszce.',
-    mentalBoost: 'Twój mózg fizycznie się przebudował. Jesteś wolnym człowiekiem.'
+    phase: 'Faza 5: Stabilizacja Nastroju',
+    benefit: 'Homeostaza dopaminowa i uwrażliwienie receptorów',
+    description: 'Po 14 dniach układ nagrody w mózgu wraca do pełnej, naturalnej wrażliwości. Receptory dopaminowe (D2), które mogły być przytępione przez chroniczne spożycie stymulantów, odzyskują swoją pierwotną gęstość. Oznacza to, że zaczynasz czerpać znacznie więcej radości z małych, codziennych rzeczy. Zmniejszają się też stany lękowe, nerwowość i natłok myśli (overthinking), które kofeina potajemnie napędzała.',
+    symptoms: 'Znaczący spadek ogólnego poziomu niepokoju (anxiety), wyższa odporność na stresujące sytuacje w pracy, głęboki, nieprzerwany sen i stabilna produktywność.',
+    tips: 'Nagródź się za ten ogromny sukces. Zafunduj sobie wyjście do sauny, dobrą kolację lub nową książkę – Twój mózg jest gotowy przyjąć czystą, zdrową dopaminę z tych źródeł.',
+    mentalBoost: 'To jest właśnie ten spokój umysłu, którego być może szukałeś latami w innych miejscach, a który był blokowany przez niewinny, codzienny napój.'
   },
   {
     id: 'm-3w',
-    code: '3T',
-    name: '3 Tygodnie (21 Dni)',
+    code: '3W',
+    name: '3 Tygodnie',
     seconds: 21 * 24 * 3600,
-    phase: 'Faza 6: Neuroplastyczność Nawykowa',
-    benefit: 'Przełamanie pętli psychologicznej',
-    description: 'Zgodnie z zasadami neuroplastyczności, stare ścieżki neuronalne odpowiedzialne za automatyzm sięgania po kubek osłabły, a nowe, zdrowe nawyki stały się drugą naturą.',
-    symptoms: 'Brak tęsknoty za kawą w sytuacjach towarzyskich czy podczas przerw w pracy.',
-    tips: 'Zastąp dawny rytuał pyszną matchą bezkofeinową, herbatą ziołową lub zimną wodą z miętą.',
-    mentalBoost: 'Zbudowałeś nowy, trwały nawyk na całe życie.'
+    phase: 'Faza 5: Przebudowa Nawyków',
+    benefit: 'Ugruntowanie nowych ścieżek neuronalnych',
+    description: 'Neurobiolodzy twierdzą, że potrzeba około 21 dni, aby nowy wzorzec zachowania zaczął formować trwałe ścieżki neuronalne (choć pełny proces zajmuje dłużej). Poranny rytuał bez kawy nie wydaje się już dziwny czy brakujący. Twój układ pokarmowy (mikrobiom jelitowy) i żołądek również dziękują Ci za brak zakwaszającego i drażniącego uderzenia z samego rana. Przyswajanie minerałów (wapń, żelazo, magnez) znacząco wzrosło.',
+    symptoms: 'Brak jakiejkolwiek fizycznej chęci na kofeinę. Zwiększona jasność umysłu utrzymująca się równo przez cały dzień roboczy.',
+    tips: 'Bądź czujny w sytuacjach wyjątkowo stresujących lub przy dużej ilości pracy – to jedyne momenty, gdy stary nawyk psychologiczny może jeszcze cicho zapukać.',
+    mentalBoost: 'Stałeś się mistrzem własnej fizjologii. Trzy tygodnie pełnej wolności zbudowały potężny fundament pod zmianę całego stylu życia.'
   },
   {
     id: 'm-1m',
     code: '1M',
-    name: '1 Miesiąc (30 Dni)',
+    name: '1 Miesiąc',
     seconds: 30 * 24 * 3600,
-    phase: 'Faza 7: Złota Homeostaza',
-    benefit: 'Biel zębów, lśniąca cera i spokój',
-    description: 'Brak przebarwień na szkliwie zębów, naturalne pH w jamie ustnej, całkowite wygaszenie stanów lękowych wywoływanych przez nadstymulację układu nerwowego.',
-    symptoms: 'Niewzruszony spokój wewnętrzny, zero kołatania serca, doskonała kondycja dziąseł.',
-    tips: 'Umów się na wizytę higienizacyjną – Twoje zęby pozostaną białe na zawsze!',
-    mentalBoost: '30 dni czystości! Jesteś w elitarnym gronie osób dbających o czystość biologiczną.'
-  },
-  {
-    id: 'm-45d',
-    code: '45D',
-    name: '45 Dni',
-    seconds: 45 * 24 * 3600,
-    phase: 'Faza 7: Żelazna Wydolność',
-    benefit: 'Głęboka regeneracja nadnerczy',
-    description: 'Kora nadnerczy jest w pełni zregenerowana po miesiącach lub latach ciągłej stymulacji. Równowaga aldosteronu i kortyzolu zapewnia stabilną wytrzymałość fizyczną.',
-    symptoms: 'Większa wydolność tlenowa podczas uprawiania sportu i brak zadyszki.',
-    tips: 'Sprawdź swoje tętno spoczynkowe – prawdopodobnie spadło o 4-8 uderzeń na minutę.',
-    mentalBoost: 'Twoje ciało działa jak precyzyjny szwajcarski zegarek.'
-  },
-  {
-    id: 'm-2m',
-    code: '2M',
-    name: '2 Miesiące (60 Dni)',
-    seconds: 60 * 24 * 3600,
-    phase: 'Faza 8: Mistrzowska Koncentracja',
-    benefit: 'Czysty stan "Flow" bez dopalaczy',
-    description: 'Zdolność do wielogodzinnej, głębokiej pracy twórczej (Deep Work) bez wahań koncentracji i bez potrzeby sztucznego stymulowania uwagi.',
-    symptoms: 'Stały, laserowy fokus i znacznie wyższa odporność na rozpraszacze.',
-    tips: 'Praktykuj bloki pracy 90-minutowej z 15-minutowymi przerwami na rozciąganie.',
-    mentalBoost: 'Prawdziwe skupienie pochodzi z czystego umysłu, nie z kofeiny.'
-  },
-  {
-    id: 'm-3m',
-    code: '3M',
-    name: '3 Miesiące (90 Dni)',
-    seconds: 90 * 24 * 3600,
-    phase: 'Faza 8: Kwartalny Triumf',
-    benefit: 'Trwałe przeprogramowanie epigenetyczne',
-    description: '90 dni to pełny cykl odnowy biologicznej wielu tkanek i komórek krwi. Twoja pamięć robocza, układ sercowo-naczyniowy i sen osiągnęły optymalny stan.',
-    symptoms: 'Wspaniałe samopoczucie każdego ranka i poczucie absolutnej wolności wyboru.',
-    tips: 'Świętuj ten kamień milowy ulubionym zdrowym posiłkiem lub nagrodą rzeczową.',
-    mentalBoost: 'Pokonałeś jedno z najbardziej podstępnych uzależnień współczesnego świata.'
-  },
-  {
-    id: 'm-6m',
-    code: '6M',
-    name: '6 Miesięcy (Pół Roku)',
-    seconds: 180 * 24 * 3600,
-    phase: 'Faza 9: Trwała Wolność',
-    benefit: 'Niezachwiany spokój układu krążenia',
-    description: 'Pół roku bez kofeiny to wielki triumf zdrowotny. Znacząco zredukowane ryzyko arytmii, nadciśnienia tętniczego oraz chronicznego wypalenia nadnerczy.',
-    symptoms: 'Głęboka równowaga emocjonalna, stabilna waga i doskonałe trawienie.',
-    tips: 'Bądź inspiracją dla znajomych, którzy narzekają na wieczne zmęczenie mimo picia 4 kaw dziennie.',
-    mentalBoost: 'Pół roku czystości! Twoje zdrowie zyskało bezcenną tarczę ochronną.'
-  },
-  {
-    id: 'm-9m',
-    code: '9M',
-    name: '9 Miesięcy',
-    seconds: 270 * 24 * 3600,
-    phase: 'Faza 9: Biologiczna Odnowa',
-    benefit: 'Perfekcyjna harmonia psychosomatyczna',
-    description: 'Układ nerwowy pracuje z maksymalną wydajnością adaptacyjną. Twój sen to głęboka studnia regeneracji każdej nocy.',
-    symptoms: 'Brak jakichkolwiek wahań energii w ciągu dnia, wysoki poziom witalności.',
-    tips: 'Zwróć uwagę na jakość swoich relacji – mniej drażliwości oznacza lepszą komunikację.',
-    mentalBoost: '9 miesięcy konsekwencji – Twoja siła woli nie ma sobie równych.'
-  },
-  {
-    id: 'm-1y',
-    code: '1R',
-    name: '1 Rok (365 Dni)',
-    seconds: 365 * 24 * 3600,
-    phase: 'Faza 10: Legenda Samodyscypliny',
-    benefit: 'Szczytowa forma ciała i umysłu',
-    description: 'Pełne cztery pory roku przeżyte w absolutnej czystości od kofeiny. Przetrwałeś jesienną słotę, zimowe mrozy, wiosenne przesilenia i letnie upały bez ani jednej kropli stymulanta.',
-    symptoms: 'Niezależność, potężna odporność psychiczna, czyste serce i naturalna życiowa energia.',
-    tips: 'Jesteś wzorem do naśladowania. Twoja historia to dowód, że wolność jest możliwa.',
-    mentalBoost: 'LEGENDA! Osiągnąłeś absolutny szczyt. Jesteś w 100% panem swojego ciała i umysłu.'
-  },
+    phase: 'Faza 6: Kompletna Zmiana Paradygmatu',
+    benefit: 'Całkowity reset metaboliczny i psychologiczny',
+    description: '30 dni wolności. Jesteś na poziomie osiągalnym dla zaledwie ułamka promila społeczeństwa żyjącego w kulturze napędzanej kofeiną. Osiągnąłeś pełen reset: Twoja kora przedczołowa pracuje płynnie, bez wymuszonych zrywów. Układ limbiczny jest spokojny, a nadnercza w pełni zregenerowane. Twoje ciało wie już doskonale, jak samodzielnie wytwarzać energię ATP bez pomocy oszusta z zewnątrz. Stałeś się osobą naturalnie energiczną.',
+    symptoms: 'Doskonała jakość snu, budzenie się z naturalną energią bez budzika, głęboki spokój wewnętrzny, znacząca redukcja stanów zapalnych w organizmie, zauważalnie lepsza kondycja cery (dzięki optymalnemu nawodnieniu i lepszemu snowi).',
+    tips: 'Jesteś inspiracją. Podziel się swoim doświadczeniem z innymi, ale pamiętaj – nie obniżaj gardy, jedno "wyjątkowe" espresso może ponownie obudzić dawne ścieżki nałogu.',
+    mentalBoost: 'To jest absolutne zwycięstwo. Wygrałeś wolność, żelazne zdrowie i niezachwiany, krystaliczny spokój umysłu. Ciesz się swoim nowym, niesamowitym życiem!'
+  }
 ];
+
 
 // --- Helpers ---
 function formatDuration(ms: number) {
@@ -508,6 +390,10 @@ export default function Page() {
   const [lastIntake, setLastIntake] = useState<number>(Date.now() - 38 * 3600 * 1000);
   const [now, setNow] = useState<number>(Date.now());
   
+  // Chart View State (Daily 60 Days vs Weekly)
+  const [chartViewMode, setChartViewMode] = useState<'daily' | 'weekly'>('daily');
+  const dailyChartScrollRef = useRef<HTMLDivElement>(null);
+
   // Modals & Sheets
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
@@ -532,6 +418,61 @@ export default function Page() {
   const [isCustomTimeOpen, setIsCustomTimeOpen] = useState(false);
   const [customTimeDate, setCustomTimeDate] = useState<string>('');
   const [customTimeHour, setCustomTimeHour] = useState<string>('');
+
+  // Milestones Collapsed / Expanded View State (Zwijana do 2 rzędów)
+  const [isMilestonesCollapsed, setIsMilestonesCollapsed] = useState<boolean>(true);
+
+  // Active hovered ring for tooltip
+  const [activeRingTooltip, setActiveRingTooltip] = useState<'days' | 'hours' | 'minutes' | 'seconds' | null>(null);
+  const [ringTooltipPos, setRingTooltipPos] = useState<{x: number, y: number}>({ x: 0, y: 0 });
+
+  // Chart drag to scroll
+  const isDraggingChart = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+
+  const handleChartMouseDown = (e: React.MouseEvent) => {
+    isDraggingChart.current = true;
+    startX.current = e.pageX - (dailyChartScrollRef.current?.offsetLeft || 0);
+    scrollLeft.current = dailyChartScrollRef.current?.scrollLeft || 0;
+  };
+
+  const handleChartMouseLeave = () => {
+    isDraggingChart.current = false;
+  };
+
+  const handleChartMouseUp = () => {
+    isDraggingChart.current = false;
+  };
+
+  const handleChartMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingChart.current) return;
+    e.preventDefault();
+    const x = e.pageX - (dailyChartScrollRef.current?.offsetLeft || 0);
+    const walk = (x - startX.current) * 2; // scroll speed multiplier
+    if (dailyChartScrollRef.current) {
+      dailyChartScrollRef.current.scrollLeft = scrollLeft.current - walk;
+    }
+  };
+
+  const handleRingInteraction = (e: React.MouseEvent | React.TouchEvent, ring: 'days' | 'hours' | 'minutes' | 'seconds') => {
+    setActiveRingTooltip(ring);
+    let clientX, clientY;
+    if ('touches' in e && (e as React.TouchEvent).touches.length > 0) {
+      clientX = (e as React.TouchEvent).touches[0].clientX;
+      clientY = (e as React.TouchEvent).touches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    } else {
+      return;
+    }
+    setRingTooltipPos({ x: clientX, y: clientY });
+  };
+
+  const handleRingLeave = () => {
+    setActiveRingTooltip(null);
+  };
 
   const currentAccent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.orange;
 
@@ -605,6 +546,21 @@ export default function Page() {
     }, 1000);
     return () => clearInterval(interval);
   }, [isClient]);
+
+  // Auto-scroll 60-day daily chart to today (right side) when viewing stats
+  useEffect(() => {
+    if (view === 'stats' && chartViewMode === 'daily') {
+      const timer = setTimeout(() => {
+        if (dailyChartScrollRef.current) {
+          dailyChartScrollRef.current.scrollTo({
+            left: dailyChartScrollRef.current.scrollWidth,
+            behavior: 'smooth'
+          });
+        }
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [view, chartViewMode]);
 
   const showToast = (msg: string) => {
     setNotificationToast(msg);
@@ -1061,6 +1017,20 @@ export default function Page() {
   const hoursProgress = Math.min(100, ((hours * 60 + minutes) / (24 * 60)) * 100);
   // Ring 3 (Minutes): 0-60m
   const minutesProgress = Math.min(100, ((minutes * 60 + seconds) / 3600) * 100);
+  // Ring 4 (Seconds): 0-60s
+  const secondsProgress = Math.min(100, (seconds / 60) * 100);
+
+  // Thumb position calculations
+  const calcThumbPos = (progress: number, radius: number) => {
+    const angleRad = (progress * 3.6 - 90) * (Math.PI / 180);
+    return {
+      x: 150 + radius * Math.cos(angleRad),
+      y: 150 + radius * Math.sin(angleRad)
+    };
+  };
+  const daysPos = calcThumbPos(daysCycleProgress, 134);
+  const hoursPos = calcThumbPos(hoursProgress, 116);
+  const minutesPos = calcThumbPos(minutesProgress, 98);
 
   // Concentric SVG Radii
   const rDays = 126;    // Outer (Accent primary)
@@ -1079,46 +1049,128 @@ export default function Page() {
   const trackStrokeColor = theme === 'light' ? '#e2e8f0' : theme === 'gray' ? '#2e313e' : '#1e212b';
   const trackBorderColor = theme === 'light' ? '#cbd5e1' : theme === 'gray' ? '#3d4152' : '#272a38';
 
-  // --- Stats Calculations & 7-Day Trendline ---
-  const chartData = Array.from({ length: 7 }).map((_, i) => {
-    const date = subDays(now, 6 - i);
+  // --- Stats Calculations: 14-Day Daily Chart with Linear Regression ---
+  const chartData14 = Array.from({ length: 14 }).map((_, i) => {
+    const date = subDays(now, 13 - i);
     const dayLogs = logs.filter(l => isSameDay(new Date(l.timestamp), date));
     const totalMg = dayLogs.reduce((sum, l) => sum + l.mg, 0);
+    const drinksDetail = dayLogs.map(l => {
+      const drink = DRINKS.find(d => d.id === l.drinkId);
+      return `${drink?.name || 'Napój'} (${l.mg} mg)`;
+    });
     return {
-      name: format(date, 'EEE', { locale: pl }), 
-      fullDate: format(date, 'd MMMM yyyy', { locale: pl }),
+      name: format(date, 'd MMM', { locale: pl }),
+      dayAbbr: format(date, 'EEE', { locale: pl }),
+      fullDate: format(date, 'EEEE, d MMMM yyyy', { locale: pl }),
+      shortDate: format(date, 'dd.MM'),
       mg: totalMg,
+      drinksCount: dayLogs.length,
+      drinksDetail,
+      isToday: i === 13,
     };
   });
 
-  // Linear Regression for 7-Day Trendline
-  const nPoints = chartData.length;
-  const xMean = (nPoints - 1) / 2;
-  const yMean = chartData.reduce((sum, d) => sum + d.mg, 0) / nPoints;
-  let numTrend = 0;
-  let denTrend = 0;
-  chartData.forEach((d, i) => {
-    numTrend += (i - xMean) * (d.mg - yMean);
-    denTrend += Math.pow(i - xMean, 2);
+  // Linear Regression for 14-Day Daily Trendline
+  const nPoints14 = chartData14.length;
+  const xMean14 = (nPoints14 - 1) / 2;
+  const yMean14 = chartData14.reduce((sum, d) => sum + d.mg, 0) / nPoints14;
+  let numTrend14 = 0;
+  let denTrend14 = 0;
+  chartData14.forEach((d, i) => {
+    numTrend14 += (i - xMean14) * (d.mg - yMean14);
+    denTrend14 += Math.pow(i - xMean14, 2);
   });
-  const trendSlope = denTrend === 0 ? 0 : numTrend / denTrend;
-  const trendIntercept = yMean - trendSlope * xMean;
+  const trendSlope14 = denTrend14 === 0 ? 0 : numTrend14 / denTrend14;
+  const trendIntercept14 = yMean14 - trendSlope14 * xMean14;
 
-  const chartDataWithTrend = chartData.map((d, i) => ({
+  const chartData14WithTrend = chartData14.map((d, i) => ({
     ...d,
-    trend: Math.max(0, Math.round(trendSlope * i + trendIntercept)),
+    trend: Math.max(0, Math.round(trendSlope14 * i + trendIntercept14)),
   }));
 
-  const startTrendVal = Math.max(0, Math.round(trendIntercept));
-  const endTrendVal = Math.max(0, Math.round(trendSlope * 6 + trendIntercept));
-  const total7DayMg = chartData.reduce((sum, d) => sum + d.mg, 0);
-  const isDeclining = trendSlope < -2;
-  const isIncreasing = trendSlope > 2;
-  const trendPercent = startTrendVal > 0 
-    ? Math.round(Math.abs((endTrendVal - startTrendVal) / startTrendVal) * 100)
+  const startTrendVal14 = Math.max(0, Math.round(trendIntercept14));
+  const endTrendVal14 = Math.max(0, Math.round(trendSlope14 * 13 + trendIntercept14));
+  const total14DayMg = chartData14.reduce((sum, d) => sum + d.mg, 0);
+  const cleanDays14 = chartData14.filter(d => d.mg === 0).length;
+  const avgDailyMg14 = Math.round(total14DayMg / 14);
+  const isDeclining14 = trendSlope14 < -0.5;
+  const isIncreasing14 = trendSlope14 > 0.5;
+  const trendPercent14 = startTrendVal14 > 0 
+    ? Math.round(Math.abs((endTrendVal14 - startTrendVal14) / startTrendVal14) * 100)
     : 0;
 
-  const todaysTotalMg = chartData[6].mg;
+  // --- Stats Calculations: 12-Week Weekly Chart with Aggregation ---
+  const WEEKS_COUNT = 12;
+  const weeklyChartData = Array.from({ length: WEEKS_COUNT }).map((_, i) => {
+    const daysAgoEnd = (WEEKS_COUNT - 1 - i) * 7;
+    const daysAgoStart = daysAgoEnd + 6;
+    const startDate = subDays(now, daysAgoStart);
+    const endDate = subDays(now, daysAgoEnd);
+    
+    const weekLogs = logs.filter(l => {
+      const logDate = new Date(l.timestamp);
+      const startMs = new Date(startDate).setHours(0, 0, 0, 0);
+      const endMs = new Date(endDate).setHours(23, 59, 59, 999);
+      return logDate.getTime() >= startMs && logDate.getTime() <= endMs;
+    });
+
+    const totalMg = weekLogs.reduce((sum, l) => sum + l.mg, 0);
+    const avgDaily = Math.round(totalMg / 7);
+
+    // Count clean days in this week
+    let cleanDays = 0;
+    for (let d = 0; d < 7; d++) {
+      const dayDate = subDays(endDate, d);
+      const hasLog = logs.some(l => isSameDay(new Date(l.timestamp), dayDate));
+      if (!hasLog) cleanDays++;
+    }
+
+    const isCurrentWeek = i === WEEKS_COUNT - 1;
+    const label = isCurrentWeek 
+      ? 'Ten tydz.' 
+      : `${format(startDate, 'd.MM')}–${format(endDate, 'd.MM')}`;
+
+    return {
+      name: label,
+      fullDate: `${format(startDate, 'd MMMM', { locale: pl })} – ${format(endDate, 'd MMMM yyyy', { locale: pl })}`,
+      mg: totalMg,
+      avgDaily,
+      drinksCount: weekLogs.length,
+      cleanDays,
+      isCurrentWeek,
+    };
+  });
+
+  // Linear Regression for Weekly Trendline
+  const nWeeks = weeklyChartData.length;
+  const xMeanW = (nWeeks - 1) / 2;
+  const yMeanW = weeklyChartData.reduce((sum, d) => sum + d.mg, 0) / nWeeks;
+  let numTrendW = 0;
+  let denTrendW = 0;
+  weeklyChartData.forEach((d, i) => {
+    numTrendW += (i - xMeanW) * (d.mg - yMeanW);
+    denTrendW += Math.pow(i - xMeanW, 2);
+  });
+  const trendSlopeW = denTrendW === 0 ? 0 : numTrendW / denTrendW;
+  const trendInterceptW = yMeanW - trendSlopeW * xMeanW;
+
+  const weeklyChartDataWithTrend = weeklyChartData.map((d, i) => ({
+    ...d,
+    trend: Math.max(0, Math.round(trendSlopeW * i + trendInterceptW)),
+  }));
+
+  const totalWeeklyMg = weeklyChartData.reduce((sum, d) => sum + d.mg, 0);
+  const avgWeeklyMg = Math.round(totalWeeklyMg / WEEKS_COUNT);
+  const cleanWeeksCount = weeklyChartData.filter(w => w.mg === 0).length;
+  const isDecliningW = trendSlopeW < -3;
+  const isIncreasingW = trendSlopeW > 3;
+  const startTrendValW = Math.max(0, Math.round(trendInterceptW));
+  const endTrendValW = Math.max(0, Math.round(trendSlopeW * (WEEKS_COUNT - 1) + trendInterceptW));
+  const trendPercentW = startTrendValW > 0 
+    ? Math.round(Math.abs((endTrendValW - startTrendValW) / startTrendValW) * 100)
+    : 0;
+
+  const todaysTotalMg = chartData14[13]?.mg || 0;
   const weekTotalDrinks = logs.filter(l => now - l.timestamp <= 7 * 24 * 3600 * 1000).length;
   const totalCaffeineSavedEstimate = Math.round((diffSeconds / 3600) * 8.3); // ~200mg/24h saved
   const totalHoursClean = Math.floor(diffSeconds / 3600);
@@ -1136,51 +1188,73 @@ export default function Page() {
     : null;
   const favoriteDrink = favoriteDrinkId ? DRINKS.find(d => d.id === favoriteDrinkId) : null;
 
-  // --- Time-of-Day Intake Distribution (Najczęstsze pory spożycia) ---
+  // --- Expanded Time-of-Day Intake Distribution (Rozbudowane Pory Dnia) ---
   const timeBuckets = [
     {
-      id: 'morning',
-      label: 'Poranek',
-      timeRange: '06:00 – 11:59',
-      icon: Sun,
+      id: 'early_morning',
+      label: 'Wczesny Poranek',
+      timeRange: '06:00 – 08:59',
+      icon: Sunrise,
       color: '#f59e0b',
       bgColor: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-      description: 'Nawyk poranny – nakłada się na naturalny szczyt porannego kortyzolu.',
-      advice: 'Zastąp kawę 500 ml wody ze szczyptą soli kłodawskiej i 10 min spaceru w świetle dziennym.',
-      filter: (h: number) => h >= 6 && h < 12,
+      description: 'Naturalny szczyt porannego wyrzutu kortyzolu (CAR). Picie kofeiny przed 9:00 rano tłumi biologiczną samoregulację i przyspiesza budowanie tolerancji.',
+      advice: 'Odczekaj minimum 90 minut po przebudzeniu. Nawodnij się 500 ml wody z elektrolitami i wyjdź na 10 minut na naturalne światło słoneczne.',
+      filter: (h: number) => h >= 6 && h < 9,
     },
     {
-      id: 'afternoon',
-      label: 'Wczesne Popołudnie',
-      timeRange: '12:00 – 15:59',
+      id: 'mid_morning',
+      label: 'Przedpołudnie',
+      timeRange: '09:00 – 11:59',
+      icon: Sun,
+      color: '#eab308',
+      bgColor: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+      description: 'Nawyk biurowy i druga kawa. Czas intensywnej koncentracji, w którym sięgamy po kolejną porcję ze zwykłego odruchu przy pracy.',
+      advice: 'Zrób 5 głębokich oddechów przeponowych, przewietrz biuro i sięgnij po herbatę ziołową lub zimną wodę gazowaną z cytryną.',
+      filter: (h: number) => h >= 9 && h < 12,
+    },
+    {
+      id: 'early_afternoon',
+      label: 'Wczesne Popołudnie (Obiad)',
+      timeRange: '12:00 – 14:59',
       icon: SunMedium,
       color: '#f97316',
       bgColor: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
-      description: 'Zjazd poobiedni – kumulacja adenozyny i spadek glukozy po posiłku.',
-      advice: 'Zjedz lżejszy obiad o niskim IG, zrób 10-minutowy spacer lub wypij zimną wodę gazowaną z cytryną.',
-      filter: (h: number) => h >= 12 && h < 16,
+      description: 'Zjazd poobiedni (postprandial dip) – kumulacja porannej adenozyny oraz wydatek metaboliczny na procesy trawienne posiłku.',
+      advice: 'Wybieraj posiłki o niskim indeksie glikemicznym, wyjdź na krótki 10-minutowy spacer lub zastosuj 15-minutową drzemkę (power nap).',
+      filter: (h: number) => h >= 12 && h < 15,
+    },
+    {
+      id: 'late_afternoon',
+      label: 'Późne Popołudnie',
+      timeRange: '15:00 – 17:59',
+      icon: Sunset,
+      color: '#f43f5e',
+      bgColor: 'bg-rose-500/10 text-rose-500 border-rose-500/30',
+      description: 'Strefa graniczna dla snu. Ze względu na 6-godzinny okres półtrwania kofeiny, 50% przyjętej dawki pozostanie aktywne we krwi w nocy.',
+      advice: 'Kategoryczna granica odcięcia stymulantów. Zastąp kawę herbatą Rooibos, naparem imbirowym lub wodą mineralną.',
+      filter: (h: number) => h >= 15 && h < 18,
     },
     {
       id: 'evening',
-      label: 'Popołudnie / Wieczór',
-      timeRange: '16:00 – 20:59',
-      icon: Sunset,
+      label: 'Wieczór',
+      timeRange: '18:00 – 21:59',
+      icon: CloudMoon,
       color: '#8b5cf6',
       bgColor: 'bg-violet-500/10 text-violet-400 border-violet-500/30',
-      description: 'Stres i zmęczenie popołudniowe – bezpośrednio blokuje produkcję melatoniny.',
-      advice: 'Kofeina po 16:00 niszczy fazę snu głębokiego NREM. Zastąp ją melisą, rumiankiem lub magnezem.',
-      filter: (h: number) => h >= 16 && h < 21,
+      description: 'Czas syntezy melatoniny. Kofeina po 18:00 drastycznie spłyca i niszczy fazę snu głębokiego (SWS/NREM) oraz opóźnia zasypianie.',
+      advice: 'Wycisz zmysły, włącz ciepłe oświetlenie, wypij napar z melisy/rumianku i odstaw ekrany min. 45 minut przed snem.',
+      filter: (h: number) => h >= 18 && h < 22,
     },
     {
       id: 'night',
-      label: 'Noc / Wczesny Ranek',
-      timeRange: '21:00 – 05:59',
+      label: 'Noc',
+      timeRange: '22:00 – 05:59',
       icon: Moon,
       color: '#06b6d4',
       bgColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-      description: 'Praca nocna lub bezsenność rozregulowująca dobowy zegar biologiczny.',
-      advice: 'Zredukuj ekspozycję na niebieskie światło ekranów i zastosuj techniki oddechowe 4-7-8.',
-      filter: (h: number) => h >= 21 || h < 6,
+      description: 'Jedna spójna faza nocna – regeneracja komórkowa mózgu lub praca zmianowa rozregulowująca zegar biologiczny.',
+      advice: 'Zadbaj o całkowite zaciemnienie sypialni, chłodną temperaturę (18–19°C) oraz techniki oddechowe 4-7-8.',
+      filter: (h: number) => h >= 22 || h < 6,
     },
   ];
 
@@ -1343,6 +1417,49 @@ export default function Page() {
             )}
           </AnimatePresence>
 
+          {/* Ring Tooltip */}
+          <AnimatePresence>
+            {activeRingTooltip && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className={`fixed z-50 px-3 py-2 rounded-xl shadow-xl border pointer-events-none backdrop-blur-md ${
+                  theme === 'light' ? 'bg-white/95 border-zinc-200' : 'bg-zinc-900/95 border-zinc-700'
+                }`}
+                style={{
+                  left: ringTooltipPos.x,
+                  top: ringTooltipPos.y - 45,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="text-[11px] font-bold whitespace-nowrap">
+                  {activeRingTooltip === 'days' && (
+                    <span style={{ color: currentAccent.primary }}>
+                      {days} {days === 1 ? 'Dzień' : 'Dni'}
+                    </span>
+                  )}
+                  {activeRingTooltip === 'hours' && (
+                    <span className="text-cyan-400">
+                      {hours} {hours === 1 ? 'Godzina' : (hours >= 2 && hours <= 4) || (hours > 20 && hours % 10 >= 2 && hours % 10 <= 4) ? 'Godziny' : 'Godzin'}
+                    </span>
+                  )}
+                  {activeRingTooltip === 'minutes' && (
+                    <span className="text-violet-400">
+                      {minutes} {minutes === 1 ? 'Minuta' : (minutes % 10 >= 2 && minutes % 10 <= 4 && (minutes < 10 || minutes > 20)) ? 'Minuty' : 'Minut'}
+                    </span>
+                  )}
+                  {activeRingTooltip === 'seconds' && (
+                    <span className="text-rose-500">
+                      {seconds} {seconds === 1 ? 'Sekunda' : (seconds % 10 >= 2 && seconds % 10 <= 4 && (seconds < 10 || seconds > 20)) ? 'Sekundy' : 'Sekund'}
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             
             {/* VIEW 1: HOME / TIMER */}
@@ -1356,19 +1473,19 @@ export default function Page() {
                 className="px-6 flex flex-col items-center"
               >
                 
-                {/* TRIPLE CONCENTRIC PROGRESS RINGS TIMER WITH DISTINCT CONTOURS, ON-RING LABELS & NUMERICAL VALUES */}
+                {/* TRIPLE CONCENTRIC PROGRESS RINGS TIMER WITH BIO-CHRONOMETER CENTRAL MEDALLION */}
                 <div className="relative flex items-center justify-center w-full max-w-[340px] aspect-square my-2">
-                  {/* Subtle Glowing Halo */}
+                  {/* Subtle Glowing Radial Atmosphere */}
                   <div 
-                    className="absolute inset-6 blur-3xl rounded-full pointer-events-none opacity-30"
+                    className="absolute inset-8 blur-3xl rounded-full pointer-events-none opacity-25 transition-all duration-700"
                     style={{ backgroundColor: currentAccent.primary }}
                   />
 
                   {/* SVG Triple Rings with Prominent Days Ring & Delicate Minutes Ring */}
-                  <svg className="w-full h-full drop-shadow-xl" viewBox="0 0 300 300">
+                  <svg className="w-full h-full drop-shadow-2xl" viewBox="0 0 300 300">
                     <defs>
                       <filter id="glow-outer" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="0" stdDeviation="3.5" floodColor={currentAccent.primary} floodOpacity="0.5" />
+                        <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={currentAccent.primary} floodOpacity="0.5" />
                       </filter>
                       <filter id="glow-mid" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="0" stdDeviation="3.5" floodColor="#06b6d4" floodOpacity="0.5" />
@@ -1376,6 +1493,17 @@ export default function Page() {
                       <filter id="glow-inner" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="0" stdDeviation="3.5" floodColor="#8b5cf6" floodOpacity="0.5" />
                       </filter>
+                      <filter id="glow-seconds" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="0" stdDeviation="3.5" floodColor="#f43f5e" floodOpacity="0.5" />
+                      </filter>
+                      <linearGradient id="medallion-grad-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#1e212b" stopOpacity="0.85" />
+                        <stop offset="100%" stopColor="#0c0e14" stopOpacity="0.95" />
+                      </linearGradient>
+                      <linearGradient id="medallion-grad-light" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
+                        <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0.95" />
+                      </linearGradient>
                     </defs>
 
                     {/* ROTATING ARCS LAYER (-90 deg from center (150, 150)) */}
@@ -1383,27 +1511,27 @@ export default function Page() {
                       {/* ================= RING 1 (OUTER - DNI - NAJBARDZIEJ WYRÓŻNIONY) ================= */}
                       {/* Dark high-contrast outer track border */}
                       <circle 
-                        cx="150" cy="150" r="132" 
+                        cx="150" cy="150" r="134" 
                         stroke={trackBorderColor} 
-                        strokeWidth="14" 
+                        strokeWidth="11" 
                         fill="none" 
                       />
                       {/* Inner track stroke */}
                       <circle 
-                        cx="150" cy="150" r="132" 
+                        cx="150" cy="150" r="134" 
                         stroke={trackStrokeColor} 
-                        strokeWidth="10" 
+                        strokeWidth="7" 
                         fill="none" 
                       />
                       {/* Active Progress - Grubszy i wiodący */}
                       <motion.circle 
-                        cx="150" cy="150" r="132"
+                        cx="150" cy="150" r="134"
                         stroke={currentAccent.primary}
-                        strokeWidth="11" 
+                        strokeWidth="8" 
                         fill="none"
                         strokeLinecap="round"
-                        strokeDasharray={2 * Math.PI * 132}
-                        strokeDashoffset={(2 * Math.PI * 132) - (daysCycleProgress / 100) * (2 * Math.PI * 132)}
+                        strokeDasharray={2 * Math.PI * 134}
+                        strokeDashoffset={(2 * Math.PI * 134) - (daysCycleProgress / 100) * (2 * Math.PI * 134)}
                         filter="url(#glow-outer)"
                         transition={{ duration: 1.2, ease: "easeOut" }}
                       />
@@ -1411,27 +1539,27 @@ export default function Page() {
                       {/* ================= RING 2 (MIDDLE - GODZINY - ŚREDNIA GRUBOŚĆ) ================= */}
                       {/* Dark high-contrast middle track border */}
                       <circle 
-                        cx="150" cy="150" r="106" 
+                        cx="150" cy="150" r="116" 
                         stroke={trackBorderColor} 
-                        strokeWidth="9.5" 
+                        strokeWidth="9" 
                         fill="none" 
                       />
                       {/* Inner track stroke */}
                       <circle 
-                        cx="150" cy="150" r="106" 
+                        cx="150" cy="150" r="116" 
                         stroke={trackStrokeColor} 
-                        strokeWidth="6.5" 
+                        strokeWidth="5.5" 
                         fill="none" 
                       />
                       {/* Active Progress - Średnia grubość */}
                       <motion.circle 
-                        cx="150" cy="150" r="106"
+                        cx="150" cy="150" r="116"
                         stroke="#06b6d4" 
-                        strokeWidth="7.5" 
+                        strokeWidth="6.5" 
                         fill="none"
                         strokeLinecap="round"
-                        strokeDasharray={2 * Math.PI * 106}
-                        strokeDashoffset={(2 * Math.PI * 106) - (hoursProgress / 100) * (2 * Math.PI * 106)}
+                        strokeDasharray={2 * Math.PI * 116}
+                        strokeDashoffset={(2 * Math.PI * 116) - (hoursProgress / 100) * (2 * Math.PI * 116)}
                         filter="url(#glow-mid)"
                         transition={{ duration: 1.2, ease: "easeOut" }}
                       />
@@ -1439,111 +1567,182 @@ export default function Page() {
                       {/* ================= RING 3 (INNER - MINUTY - NAJDELIKATNIEJSZY) ================= */}
                       {/* Dark high-contrast inner track border */}
                       <circle 
+                        cx="150" cy="150" r="98" 
+                        stroke={trackBorderColor} 
+                        strokeWidth="7" 
+                        fill="none" 
+                      />
+                      {/* Inner track stroke */}
+                      <circle 
+                        cx="150" cy="150" r="98" 
+                        stroke={trackStrokeColor} 
+                        strokeWidth="4" 
+                        fill="none" 
+                      />
+                      {/* Active Progress - Cienki i subtelny */}
+                      <motion.circle 
+                        cx="150" cy="150" r="98"
+                        stroke="#8b5cf6" 
+                        strokeWidth="5" 
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 98}
+                        strokeDashoffset={(2 * Math.PI * 98) - (minutesProgress / 100) * (2 * Math.PI * 98)}
+                        filter="url(#glow-inner)"
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                      />
+
+                      {/* ================= RING 4 (INNERMOST - SEKUNDY - BARDZO CIENKI) ================= */}
+                      {/* Dark high-contrast innermost track border */}
+                      <circle 
                         cx="150" cy="150" r="80" 
                         stroke={trackBorderColor} 
-                        strokeWidth="6" 
+                        strokeWidth="5" 
                         fill="none" 
                       />
                       {/* Inner track stroke */}
                       <circle 
                         cx="150" cy="150" r="80" 
                         stroke={trackStrokeColor} 
-                        strokeWidth="3.5" 
+                        strokeWidth="2.5" 
                         fill="none" 
                       />
-                      {/* Active Progress - Cienki i subtelny */}
+                      {/* Active Progress - Najcieńszy */}
                       <motion.circle 
                         cx="150" cy="150" r="80"
-                        stroke="#8b5cf6" 
-                        strokeWidth="4.5" 
+                        stroke="#f43f5e" 
+                        strokeWidth="3.5" 
                         fill="none"
                         strokeLinecap="round"
                         strokeDasharray={2 * Math.PI * 80}
-                        strokeDashoffset={(2 * Math.PI * 80) - (minutesProgress / 100) * (2 * Math.PI * 80)}
-                        filter="url(#glow-inner)"
+                        strokeDashoffset={(2 * Math.PI * 80) - (secondsProgress / 100) * (2 * Math.PI * 80)}
+                        filter="url(#glow-seconds)"
                         transition={{ duration: 1.2, ease: "easeOut" }}
                       />
+
+                      {/* HIT AREAS FOR TOOLTIPS (Invisible overlay) */}
+                      <circle 
+                        cx="150" cy="150" r="134" stroke="transparent" strokeWidth="18" fill="none"
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                        onMouseEnter={(e) => handleRingInteraction(e, 'days')}
+                        onMouseMove={(e) => handleRingInteraction(e, 'days')}
+                        onMouseLeave={handleRingLeave}
+                        onTouchStart={(e) => handleRingInteraction(e, 'days')}
+                        onTouchMove={(e) => handleRingInteraction(e, 'days')}
+                        onTouchEnd={handleRingLeave}
+                      />
+                      <circle 
+                        cx="150" cy="150" r="116" stroke="transparent" strokeWidth="18" fill="none"
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                        onMouseEnter={(e) => handleRingInteraction(e, 'hours')}
+                        onMouseMove={(e) => handleRingInteraction(e, 'hours')}
+                        onMouseLeave={handleRingLeave}
+                        onTouchStart={(e) => handleRingInteraction(e, 'hours')}
+                        onTouchMove={(e) => handleRingInteraction(e, 'hours')}
+                        onTouchEnd={handleRingLeave}
+                      />
+                      <circle 
+                        cx="150" cy="150" r="98" stroke="transparent" strokeWidth="18" fill="none"
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                        onMouseEnter={(e) => handleRingInteraction(e, 'minutes')}
+                        onMouseMove={(e) => handleRingInteraction(e, 'minutes')}
+                        onMouseLeave={handleRingLeave}
+                        onTouchStart={(e) => handleRingInteraction(e, 'minutes')}
+                        onTouchMove={(e) => handleRingInteraction(e, 'minutes')}
+                        onTouchEnd={handleRingLeave}
+                      />
+                      <circle 
+                        cx="150" cy="150" r="80" stroke="transparent" strokeWidth="18" fill="none"
+                        style={{ pointerEvents: 'stroke', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                        onMouseEnter={(e) => handleRingInteraction(e, 'seconds')}
+                        onMouseMove={(e) => handleRingInteraction(e, 'seconds')}
+                        onMouseLeave={handleRingLeave}
+                        onTouchStart={(e) => handleRingInteraction(e, 'seconds')}
+                        onTouchMove={(e) => handleRingInteraction(e, 'seconds')}
+                        onTouchEnd={handleRingLeave}
+                      />
                     </g>
 
-                    {/* DIRECT ON-RING LABELS AND VALUES (NON-ROTATED) */}
-                    {/* Ring 1 Label & Value Badge (Outer - Dni) */}
-                    <g transform="translate(150, 18)">
-                      <rect 
-                        x="-38" y="-10" width="76" height="20" rx="10" 
-                        fill={theme === 'light' ? '#ffffff' : '#0f1118'} 
-                        stroke={currentAccent.primary} 
-                        strokeWidth="1.5" 
-                      />
-                      <circle cx="-28" cy="0" r="3.5" fill={currentAccent.primary} />
-                      <text 
-                        x="3" y="3.5" 
-                        textAnchor="middle" 
-                        fill={theme === 'light' ? '#18181b' : '#ffffff'} 
-                        fontSize="9.5" 
-                        fontWeight="800" 
-                        letterSpacing="0.3px"
-                      >
-                        DNI: {days}d
-                      </text>
-                    </g>
+                    {/* DECORATIVE INNER TICK MARKS & INNER MEDALLION */}
+                    <circle 
+                      cx="150" cy="150" r="66"
+                      fill={theme === 'light' ? 'url(#medallion-grad-light)' : 'url(#medallion-grad-dark)'}
+                      stroke={theme === 'light' ? '#e2e8f0' : '#27272a'}
+                      strokeWidth="1.5"
+                    />
+                    <circle 
+                      cx="150" cy="150" r="62"
+                      fill="none"
+                      stroke={theme === 'light' ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)'}
+                      strokeWidth="1"
+                      strokeDasharray="2 6"
+                    />
 
-                    {/* Ring 2 Label & Value Badge (Middle - Godziny) */}
-                    <g transform="translate(150, 44)">
-                      <rect 
-                        x="-40" y="-9" width="80" height="18" rx="9" 
-                        fill={theme === 'light' ? '#ffffff' : '#0f1118'} 
-                        stroke="#06b6d4" 
-                        strokeWidth="1.5" 
-                      />
-                      <circle cx="-30" cy="0" r="3" fill="#06b6d4" />
-                      <text 
-                        x="3" y="3" 
-                        textAnchor="middle" 
-                        fill={theme === 'light' ? '#0e7490' : '#22d3ee'} 
-                        fontSize="9" 
-                        fontWeight="800" 
-                        letterSpacing="0.2px"
-                      >
-                        GODZ: {hours}h
+                    {/* THUMBS WITH TEXT FOR OUTER 3 RINGS */}
+                    {/* Days Thumb */}
+                    <motion.g
+                      initial={{ x: 150, y: 150 - 134 }}
+                      animate={{ x: daysPos.x, y: daysPos.y }}
+                      transition={{ duration: 1.2, ease: "easeOut" }}
+                      className="pointer-events-none"
+                    >
+                      <circle cx="0" cy="0" r="13" fill={theme === 'light' ? '#ffffff' : '#18181b'} stroke={currentAccent.primary} strokeWidth="2" />
+                      <text x="0" y="3.5" textAnchor="middle" fontSize="10" fontWeight="bold" fontFamily="inherit" fill={theme === 'light' ? '#09090b' : '#ffffff'}>
+                        {days}d
                       </text>
-                    </g>
+                    </motion.g>
 
-                    {/* Ring 3 Label & Value Badge (Inner - Minuty) */}
-                    <g transform="translate(150, 70)">
-                      <rect 
-                        x="-36" y="-8.5" width="72" height="17" rx="8.5" 
-                        fill={theme === 'light' ? '#ffffff' : '#0f1118'} 
-                        stroke="#8b5cf6" 
-                        strokeWidth="1.5" 
-                      />
-                      <circle cx="-27" cy="0" r="2.5" fill="#8b5cf6" />
-                      <text 
-                        x="2" y="3" 
-                        textAnchor="middle" 
-                        fill={theme === 'light' ? '#6d28d9' : '#c084fc'} 
-                        fontSize="8.5" 
-                        fontWeight="800" 
-                        letterSpacing="0.2px"
-                      >
-                        MIN: {minutes}m
+                    {/* Hours Thumb */}
+                    <motion.g
+                      initial={{ x: 150, y: 150 - 116 }}
+                      animate={{ x: hoursPos.x, y: hoursPos.y }}
+                      transition={{ duration: 1.2, ease: "easeOut" }}
+                      className="pointer-events-none"
+                    >
+                      <circle cx="0" cy="0" r="11" fill={theme === 'light' ? '#ffffff' : '#18181b'} stroke="#06b6d4" strokeWidth="2" />
+                      <text x="0" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fontFamily="inherit" fill={theme === 'light' ? '#09090b' : '#ffffff'}>
+                        {hours}h
                       </text>
-                    </g>
+                    </motion.g>
+
+                    {/* Minutes Thumb */}
+                    <motion.g
+                      initial={{ x: 150, y: 150 - 98 }}
+                      animate={{ x: minutesPos.x, y: minutesPos.y }}
+                      transition={{ duration: 1.2, ease: "easeOut" }}
+                      className="pointer-events-none"
+                    >
+                      <circle cx="0" cy="0" r="10" fill={theme === 'light' ? '#ffffff' : '#18181b'} stroke="#8b5cf6" strokeWidth="2" />
+                      <text x="0" y="3" textAnchor="middle" fontSize="8" fontWeight="bold" fontFamily="inherit" fill={theme === 'light' ? '#09090b' : '#ffffff'}>
+                        {minutes}m
+                      </text>
+                    </motion.g>
                   </svg>
                   
-                  {/* Central Text HUD */}
-                  <div className="absolute flex flex-col items-center justify-center text-center select-none pt-7">
-                    <span className="text-4xl sm:text-5xl font-light tracking-tighter tabular-nums leading-none">
-                      {days > 0 ? days : hours}
-                    </span>
-                    <span 
-                      className="text-[10px] font-bold tracking-widest uppercase mt-1"
-                      style={{ color: currentAccent.primary }}
-                    >
-                      {days > 0 ? (days === 1 ? 'Dzień Wolności' : 'Dni Wolności') : 'Godzin Wolności'}
-                    </span>
-                    <div className={`flex items-center gap-1.5 text-xs font-medium tabular-nums mt-1.5 px-3 py-1 rounded-full border backdrop-blur-md ${innerItemBg}`}>
-                      <Clock size={12} className={muteTextClasses} />
-                      <span>{hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
+                  {/* LUXURY BIOMETRIC CHRONOMETER INNER DISPLAY */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none p-6">
+                    {/* Hero Number Display with Fluid Proportions */}
+                    <div className="flex items-baseline justify-center gap-1 leading-none my-0.5 mt-2">
+                      <span className="text-4xl sm:text-[46px] font-black tracking-tight tabular-nums bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent drop-shadow-sm">
+                        {days > 0 ? days : hours}
+                      </span>
+                      <span 
+                        className="text-xs font-black uppercase tracking-wider"
+                        style={{ color: currentAccent.primary }}
+                      >
+                        {days > 0 ? (days === 1 ? 'dzień' : 'dni') : 'godz'}
+                      </span>
+                    </div>
+
+                    {/* Secondary Unit Subtitle */}
+                    <p className={`text-[10px] font-semibold tracking-wider uppercase ${subTextClasses}`}>
+                      {days > 0 ? `${hours}h ${minutes}m czystości` : `${minutes}m ${seconds}s czystości`}
+                    </p>
+
+                    {/* Digital Precision Ticker */}
+                    <div className={`mt-1.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full border backdrop-blur-md text-[11px] font-mono font-bold tabular-nums shadow-inner ${innerItemBg}`}>
+                      <span className="w-1.5 h-1.5 rounded-full animate-ping mr-0.5" style={{ backgroundColor: currentAccent.primary }} />
+                      <span>{days > 0 ? `${days}d ` : ''}{hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
                     </div>
                   </div>
                 </div>
@@ -1647,26 +1846,29 @@ export default function Page() {
                         </h3>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xl font-bold">{Math.floor(milestoneProgress)}%</span>
-                      <p className={`text-[10px] font-medium ${muteTextClasses}`}>
+                    <div className="text-right pb-1">
+                      <p className={`text-[10px] font-bold ${muteTextClasses}`}>
                         {remainingDays > 0 ? `${remainingDays}d ${remainingHours}h` : `${remainingHours}h ${remainingMins}m`} do celu
                       </p>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className={`w-full h-2.5 rounded-full overflow-hidden p-0.5 border relative z-10 mb-2 ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/40 border-zinc-800/80'}`}>
+                  {/* Progress Bar with Embedded Percentage */}
+                  <div className={`w-full h-5 rounded-full p-0.5 border relative z-10 mb-2 flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/40 border-zinc-800/80'}`}>
                     <motion.div 
-                      className="h-full rounded-full"
+                      className="h-full rounded-full flex items-center justify-end px-2 min-w-[2rem]"
                       style={{
                         backgroundColor: currentAccent.primary,
                         boxShadow: `0 0 12px ${currentAccent.glow}`
                       }}
                       initial={{ width: 0 }}
-                      animate={{ width: `${milestoneProgress}%` }}
+                      animate={{ width: `${Math.max(milestoneProgress, 8)}%` }}
                       transition={{ duration: 1, ease: "easeOut" }}
-                    />
+                    >
+                      <span className="text-[10px] font-black text-white leading-none shadow-sm select-none bg-black/25 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                        {Math.floor(milestoneProgress)}%
+                      </span>
+                    </motion.div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs relative z-10">
@@ -1677,80 +1879,129 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* EXPANDED MILESTONES GRID (2H, 4H, 6H, 8H, 12H, 16H, 1D, 36H, 2D... 1R) */}
+                {/* COLLAPSIBLE MILESTONES SECTION (ZWIJANA DO 2 RZĘDÓW ZE SKROJONYM WIDOKIEM NA KOLEJNY CEL) */}
                 <div className="w-full mt-6">
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div className="flex items-center gap-1.5">
                       <Award size={15} style={{ color: currentAccent.primary }} />
                       <h4 className={`text-xs font-bold uppercase tracking-wider ${subTextClasses}`}>
-                        Osiągnięcia & Kamienie Milowe ({MILESTONES.length})
+                        Kamienie Milowe ({MILESTONES.length})
                       </h4>
                     </div>
-                    <span className={`text-[11px] font-medium ${muteTextClasses}`}>
-                      {MILESTONES.filter(m => diffSeconds >= m.seconds).length} / {MILESTONES.length} zdobyte
-                    </span>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-medium ${muteTextClasses}`}>
+                        {MILESTONES.filter(m => diffSeconds >= m.seconds).length} / {MILESTONES.length} zdobyte
+                      </span>
+                      
+                      {/* Collapse / Expand Toggle Button */}
+                      <button
+                        onClick={() => setIsMilestonesCollapsed(!isMilestonesCollapsed)}
+                        className={`text-xs px-2.5 py-1 rounded-xl border flex items-center gap-1 font-semibold transition-all ${innerItemBg} hover:border-zinc-500`}
+                        style={{ color: currentAccent.primary }}
+                      >
+                        <span>{isMilestonesCollapsed ? 'Rozwiń wszystkie' : 'Zwiń do 2 rzędów'}</span>
+                        <ChevronDown 
+                          size={14} 
+                          className={`transition-transform duration-300 ${isMilestonesCollapsed ? '' : 'rotate-180'}`} 
+                        />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Badges Grid (4 columns) */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {MILESTONES.map((milestone) => {
-                      const isUnlocked = diffSeconds >= milestone.seconds;
-                      const isNext = milestone.id === nextMilestone.id && !isUnlocked;
+                  {/* Badges Grid (4 columns, collapsible so that 2 rows are shown containing the next milestone) */}
+                  {(() => {
+                    // Logic to ensure the row with the next milestone is always displayed when collapsed:
+                    const nextMilestoneIndex = MILESTONES.findIndex(m => m.id === nextMilestone.id);
+                    const targetIndex = nextMilestoneIndex !== -1 ? nextMilestoneIndex : 0;
+                    
+                    // Grid has 4 columns. Target row index is Math.floor(targetIndex / 4)
+                    const targetRow = Math.floor(targetIndex / 4);
+                    // Determine which 2 rows (8 items) to show:
+                    // If targetRow is 0, show rows 0 and 1 (items 0 to 7)
+                    // If targetRow is the last row, show last 2 rows
+                    // Otherwise show row targetRow and targetRow + 1 or targetRow - 1 and targetRow
+                    const totalRows = Math.ceil(MILESTONES.length / 4);
+                    let startRow = targetRow;
+                    if (startRow + 1 >= totalRows) {
+                      startRow = Math.max(0, totalRows - 2);
+                    }
+                    const startIndex = startRow * 4;
+                    const visibleMilestones = isMilestonesCollapsed 
+                      ? MILESTONES.slice(startIndex, startIndex + 8)
+                      : MILESTONES;
 
-                      return (
-                        <motion.button
-                          key={milestone.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setSelectedMilestone(milestone)}
-                          className={`relative rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all border text-center ${
-                            isUnlocked
-                              ? `${theme === 'light' ? 'bg-orange-50/80 border-orange-200' : 'bg-zinc-900 border-zinc-700/80 shadow-md'}`
-                              : isNext
-                              ? `${theme === 'light' ? 'bg-white border-cyan-400 ring-2 ring-cyan-400/20' : 'bg-zinc-900/90 border-cyan-500/60 shadow-[0_0_14px_rgba(6,182,212,0.2)]'}`
-                              : `${innerItemBg} ${muteTextClasses} hover:border-zinc-600`
-                          }`}
-                          style={isUnlocked ? {
-                            borderColor: currentAccent.badgeBorder,
-                            backgroundColor: currentAccent.badgeBg,
-                          } : {}}
-                        >
-                          {/* Top Status Icon */}
-                          <div className="mb-1">
-                            {isUnlocked ? (
-                              <CheckCircle2 
-                                size={15} 
-                                style={{ color: currentAccent.primary }}
-                              />
-                            ) : isNext ? (
-                              <Sparkles size={15} className="text-cyan-400 animate-pulse" />
-                            ) : (
-                              <Lock size={13} className={muteTextClasses} />
-                            )}
+                    return (
+                      <div className="space-y-2">
+                        {isMilestonesCollapsed && totalRows > 2 && (
+                          <div className="flex items-center justify-between text-[10px] px-1 text-zinc-500">
+                            <span>Widok rzędów {startRow + 1}-{startRow + 2} z {totalRows}</span>
+                            <span className="text-cyan-400 font-semibold">Kolejny cel ({nextMilestone.code}) w widoku</span>
                           </div>
+                        )}
 
-                          {/* Code (e.g. 2H, 6H, 1D, 36H, 1T) */}
-                          <span 
-                            className="text-xs font-bold tracking-tight"
-                            style={isUnlocked ? { color: currentAccent.primary } : isNext ? { color: '#06b6d4' } : {}}
-                          >
-                            {milestone.code}
-                          </span>
+                        <div className="grid grid-cols-4 gap-2">
+                          {visibleMilestones.map((milestone) => {
+                            const isUnlocked = diffSeconds >= milestone.seconds;
+                            const isNext = milestone.id === nextMilestone.id && !isUnlocked;
 
-                          <span className={`text-[8.5px] mt-0.5 truncate max-w-full font-medium ${muteTextClasses}`}>
-                            {milestone.name}
-                          </span>
+                            return (
+                              <motion.button
+                                key={milestone.id}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setSelectedMilestone(milestone)}
+                                className={`relative rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all border text-center ${
+                                  isUnlocked
+                                    ? `${theme === 'light' ? 'bg-orange-50/80 border-orange-200' : 'bg-zinc-900 border-zinc-700/80 shadow-md'}`
+                                    : isNext
+                                    ? `${theme === 'light' ? 'bg-white border-cyan-400 ring-2 ring-cyan-400/20' : 'bg-zinc-900/90 border-cyan-500/60 shadow-[0_0_14px_rgba(6,182,212,0.2)]'}`
+                                    : `${innerItemBg} ${muteTextClasses} hover:border-zinc-600`
+                                }`}
+                                style={isUnlocked ? {
+                                  borderColor: currentAccent.badgeBorder,
+                                  backgroundColor: currentAccent.badgeBg,
+                                } : {}}
+                              >
+                                {/* Top Status Icon */}
+                                <div className="mb-1">
+                                  {isUnlocked ? (
+                                    <CheckCircle2 
+                                      size={15} 
+                                      style={{ color: currentAccent.primary }}
+                                    />
+                                  ) : isNext ? (
+                                    <Sparkles size={15} className="text-cyan-400 animate-pulse" />
+                                  ) : (
+                                    <Lock size={13} className={muteTextClasses} />
+                                  )}
+                                </div>
 
-                          {/* Glow Indicator for Next Target */}
-                          {isNext && (
-                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                            </span>
-                          )}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+                                {/* Code (e.g. 1H, 2H, 6H, 1D, 36H, 1T, 2L) */}
+                                <span 
+                                  className="text-xs font-bold tracking-tight"
+                                  style={isUnlocked ? { color: currentAccent.primary } : isNext ? { color: '#06b6d4' } : {}}
+                                >
+                                  {milestone.code}
+                                </span>
+
+                                <span className={`text-[8.5px] mt-0.5 truncate max-w-full font-medium ${muteTextClasses}`}>
+                                  {milestone.name}
+                                </span>
+
+                                {/* Glow Indicator for Next Target */}
+                                {isNext && (
+                                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                                  </span>
+                                )}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
               </motion.div>
@@ -1838,115 +2089,401 @@ export default function Page() {
                   </div>
                 )}
 
-                {/* 7-Day Chart with Visual Trend Line */}
+                {/* Consumption Chart with Daily 60-Day Horizontal Scroll & Weekly Mode */}
                 <div className={`border rounded-3xl p-5 pt-6 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center justify-between mb-2">
+                  {/* Header with Title and Mode Switcher */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div className="flex items-center gap-2">
-                      <TrendingUp size={16} style={{ color: currentAccent.primary }} />
-                      <span className="text-xs font-bold uppercase tracking-wider">
-                        Spożycie Kofeiny & Linia Trendu
-                      </span>
+                      <TrendingUp size={18} style={{ color: currentAccent.primary }} />
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider">
+                          Wykres Spożycia & Trend
+                        </h3>
+                        <span className={`text-[10px] ${muteTextClasses}`}>
+                          {chartViewMode === 'daily' ? 'Ostatnie 14 dni (przewijane poziomo)' : 'Ostatnie 12 tygodni (zagregowane)'}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-[10px] font-medium ${muteTextClasses}`}>7 dni</span>
+
+                    {/* Mode Toggle Switch */}
+                    <div className={`flex items-center p-1 rounded-2xl border self-start sm:self-auto ${innerItemBg}`}>
+                      <button
+                        type="button"
+                        onClick={() => setChartViewMode('daily')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          chartViewMode === 'daily'
+                            ? 'text-white shadow-md'
+                            : `${muteTextClasses} hover:text-zinc-200`
+                        }`}
+                        style={{
+                          backgroundColor: chartViewMode === 'daily' ? currentAccent.primary : 'transparent',
+                        }}
+                      >
+                        <Calendar size={13} />
+                        <span>Dzienny (14 dni)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartViewMode('weekly')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          chartViewMode === 'weekly'
+                            ? 'text-white shadow-md'
+                            : `${muteTextClasses} hover:text-zinc-200`
+                        }`}
+                        style={{
+                          backgroundColor: chartViewMode === 'weekly' ? currentAccent.primary : 'transparent',
+                        }}
+                      >
+                        <CalendarDays size={13} />
+                        <span>Tygodniowy</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Strip */}
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                        {chartViewMode === 'daily' ? 'Czyste dni' : 'Czyste tygodnie'}
+                      </div>
+                      <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                        {chartViewMode === 'daily' ? `${cleanDays14} / 14` : `${cleanWeeksCount} / 12`}
+                      </div>
+                    </div>
+                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                        {chartViewMode === 'daily' ? 'Śr. dzienna' : 'Śr. tygodniowa'}
+                      </div>
+                      <div className="text-sm font-bold mt-0.5" style={{ color: currentAccent.primary }}>
+                        {chartViewMode === 'daily' ? `~${avgDailyMg14} mg` : `~${avgWeeklyMg} mg`}
+                      </div>
+                    </div>
+                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                        Suma kofeiny
+                      </div>
+                      <div className="text-sm font-bold mt-0.5">
+                        {chartViewMode === 'daily' ? `${total14DayMg} mg` : `${totalWeeklyMg} mg`}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Dynamic Trend Indicator Banner */}
-                  <div className="flex items-center justify-between mb-4 px-3 py-2 rounded-2xl border text-xs font-medium bg-zinc-500/5">
+                  <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-2xl border text-xs font-medium bg-zinc-500/5">
                     <div className="flex items-center gap-2">
-                      {total7DayMg === 0 ? (
-                        <>
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-emerald-500 font-bold">0 mg w tym tygodniu – Idealna Czystość! 🔥</span>
-                        </>
-                      ) : isDeclining ? (
-                        <>
-                          <TrendingDown size={15} className="text-emerald-500" />
-                          <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercent}%) – Świetna redukcja!</span>
-                        </>
-                      ) : isIncreasing ? (
-                        <>
-                          <TrendingUp size={15} className="text-rose-500" />
-                          <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercent}%) – Uważaj na nawyki</span>
-                        </>
+                      {chartViewMode === 'daily' ? (
+                        total14DayMg === 0 ? (
+                          <>
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-emerald-500 font-bold">0 mg w 14 dniach – 100% Czystości! 🔥</span>
+                          </>
+                        ) : isDeclining14 ? (
+                          <>
+                            <TrendingDown size={15} className="text-emerald-500" />
+                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercent14}%) w 14 dniach – Brawo!</span>
+                          </>
+                        ) : isIncreasing14 ? (
+                          <>
+                            <TrendingUp size={15} className="text-rose-500" />
+                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercent14}%) w 14 dniach – Zadbaj o limit</span>
+                          </>
+                        ) : (
+                          <>
+                            <Activity size={15} style={{ color: currentAccent.primary }} />
+                            <span className="font-bold">Trend Stabilny – Stała kontrola nawyku</span>
+                          </>
+                        )
                       ) : (
-                        <>
-                          <Activity size={15} style={{ color: currentAccent.primary }} />
-                          <span className="font-bold">Trend Stabilny – Stała kontrola spożycia</span>
-                        </>
+                        totalWeeklyMg === 0 ? (
+                          <>
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-emerald-500 font-bold">0 mg w całym kwartale – Mistrzowska dyscyplina! 🔥</span>
+                          </>
+                        ) : isDecliningW ? (
+                          <>
+                            <TrendingDown size={15} className="text-emerald-500" />
+                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercentW}%) tydzień do tygodnia</span>
+                          </>
+                        ) : isIncreasingW ? (
+                          <>
+                            <TrendingUp size={15} className="text-rose-500" />
+                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercentW}%) w skali tygodni</span>
+                          </>
+                        ) : (
+                          <>
+                            <Activity size={15} style={{ color: currentAccent.primary }} />
+                            <span className="font-bold">Stabilne spożycie tygodniowe</span>
+                          </>
+                        )
                       )}
                     </div>
-                    <span className={`text-[10px] ${muteTextClasses}`}>Linia przerywana: Trend</span>
+                    <span className={`text-[10px] hidden xs:inline ${muteTextClasses}`}>Linia przerywana: Trend</span>
                   </div>
-                  
-                  <div className="h-[210px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartDataWithTrend} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                        <XAxis 
-                          dataKey="name" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 11 }} 
-                          dy={10}
-                        />
-                        <YAxis 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 11 }} 
-                        />
-                        <Tooltip 
-                          cursor={{ fill: theme === 'light' ? '#f1f5f9' : '#1e293b', opacity: 0.4 }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const mgVal = payload.find(p => p.dataKey === 'mg')?.value;
-                              const trendVal = payload.find(p => p.dataKey === 'trend')?.value;
-                              return (
-                                <div className={`text-xs py-2 px-3 rounded-xl shadow-2xl border ${modalBg}`}>
-                                  <span className="font-semibold" style={{ color: currentAccent.primary }}>
-                                    {payload[0].payload.fullDate}
-                                  </span>
-                                  <p className="mt-1 font-medium">Spożycie: {mgVal} mg</p>
-                                  <p className={`text-[11px] font-medium mt-0.5 ${muteTextClasses}`}>
-                                    Wartość trendu: ~{trendVal} mg
-                                  </p>
-                                </div>
-                              );
+
+                  {/* Horizontal Scroll Helpers for 60-day daily view */}
+                  {chartViewMode === 'daily' && (
+                    <div className="flex items-center justify-between gap-2 mb-3 px-1 text-[11px]">
+                      <span className={`flex items-center gap-1 font-medium ${muteTextClasses}`}>
+                        👈 <span className="hidden sm:inline">Przewiń wykres w poziomie (60 dni):</span>
+                        <span className="sm:hidden">Przewiń w poziomie:</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (dailyChartScrollRef.current) {
+                              dailyChartScrollRef.current.scrollTo({
+                                left: dailyChartScrollRef.current.scrollWidth,
+                                behavior: 'smooth'
+                              });
                             }
-                            return null;
                           }}
-                        />
-                        {/* Daily Consumption Bars */}
-                        <Bar dataKey="mg" radius={[6, 6, 0, 0]} maxBarSize={32}>
-                          {chartDataWithTrend.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={
-                                entry.mg === 0 
-                                  ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
-                                  : entry.mg > 400 
-                                  ? '#ef4444' 
-                                  : currentAccent.primary
-                              }
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold text-white shadow-sm transition-all"
+                          style={{ backgroundColor: currentAccent.primary }}
+                        >
+                          Dzisiaj 👉
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chart Rendering Container */}
+                  {chartViewMode === 'daily' ? (
+                    <div
+                      ref={dailyChartScrollRef}
+                      className="overflow-x-auto pb-2 rounded-2xl select-none cursor-grab active:cursor-grabbing"
+                      style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: `${currentAccent.primary} transparent`,
+                        touchAction: 'pan-x'
+                      }}
+                      onMouseDown={handleChartMouseDown}
+                      onMouseLeave={handleChartMouseLeave}
+                      onMouseUp={handleChartMouseUp}
+                      onMouseMove={handleChartMouseMove}
+                    >
+                      <div className="min-w-[600px] h-[230px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={chartData14WithTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                            <XAxis 
+                              dataKey="name" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              interval={0}
+                              tick={({ x, y, payload }) => {
+                                const item = chartData14WithTrend.find(d => d.name === payload.value);
+                                const isToday = item?.isToday;
+                                return (
+                                  <g transform={`translate(${x},${y})`}>
+                                    <text 
+                                      x={0} 
+                                      y={0} 
+                                      dy={12} 
+                                      textAnchor="middle" 
+                                      fill={isToday ? currentAccent.primary : (theme === 'light' ? '#64748b' : '#94a3b8')}
+                                      fontSize={isToday ? 11 : 9.5}
+                                      fontWeight={isToday ? 700 : 500}
+                                    >
+                                      {item?.shortDate || payload.value}
+                                    </text>
+                                    <text 
+                                      x={0} 
+                                      y={0} 
+                                      dy={22} 
+                                      textAnchor="middle" 
+                                      fill={isToday ? currentAccent.primary : (theme === 'light' ? '#94a3b8' : '#64748b')}
+                                      fontSize={8}
+                                      fontWeight={isToday ? 700 : 400}
+                                    >
+                                      {isToday ? 'Dziś' : item?.dayAbbr}
+                                    </text>
+                                  </g>
+                                );
+                              }}
                             />
-                          ))}
-                        </Bar>
-                        {/* Visual Linear Regression Trend Line */}
-                        <Line 
-                          type="monotone" 
-                          dataKey="trend" 
-                          stroke={total7DayMg === 0 ? '#10b981' : isDeclining ? '#10b981' : isIncreasing ? '#f43f5e' : currentAccent.primary} 
-                          strokeWidth={2.5} 
-                          strokeDasharray="4 4" 
-                          dot={{ 
-                            r: 3.5, 
-                            strokeWidth: 2, 
-                            fill: theme === 'light' ? '#ffffff' : '#0f1118',
-                            stroke: total7DayMg === 0 ? '#10b981' : isDeclining ? '#10b981' : isIncreasing ? '#f43f5e' : currentAccent.primary
-                          }}
-                          activeDot={{ r: 5 }}
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
+                            />
+                            <Tooltip 
+                              cursor={{ fill: theme === 'light' ? '#f1f5f9' : '#1e293b', opacity: 0.4 }}
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0].payload;
+                                  const mgVal = Number(payload.find(p => p.dataKey === 'mg')?.value ?? 0);
+                                  const trendVal = Number(payload.find(p => p.dataKey === 'trend')?.value ?? 0);
+                                  return (
+                                    <div className={`text-xs py-2.5 px-3.5 rounded-2xl shadow-2xl border min-w-[190px] ${modalBg}`}>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-xs" style={{ color: currentAccent.primary }}>
+                                          {item.fullDate}
+                                        </span>
+                                        {item.isToday && (
+                                          <span 
+                                            className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white uppercase tracking-wider"
+                                            style={{ backgroundColor: currentAccent.primary }}
+                                          >
+                                            Dzisiaj
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="mt-2 space-y-1">
+                                        <div className="flex items-center justify-between text-xs font-semibold">
+                                          <span>Spożycie:</span>
+                                          <span className={mgVal === 0 ? 'text-emerald-500' : mgVal > 400 ? 'text-rose-500' : ''}>
+                                            {mgVal} mg
+                                          </span>
+                                        </div>
+                                        <div className={`flex items-center justify-between text-[11px] font-medium ${muteTextClasses}`}>
+                                          <span>Wartość trendu:</span>
+                                          <span>~{trendVal} mg</span>
+                                        </div>
+                                      </div>
+                                      {item.drinksDetail && item.drinksDetail.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-zinc-500/20 text-[10px] space-y-0.5">
+                                          <span className={`font-semibold ${subTextClasses}`}>Wypite napoje:</span>
+                                          {item.drinksDetail.map((d: string, idx: number) => (
+                                            <p key={idx} className={muteTextClasses}>• {d}</p>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {mgVal === 0 && (
+                                        <div className="mt-2 pt-1.5 border-t border-emerald-500/20 text-[10px] font-bold text-emerald-500 flex items-center gap-1">
+                                          <Sparkles size={11} /> 100% Czystości (0 mg)
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            {/* Daily Consumption Bars */}
+                            <Bar dataKey="mg" radius={[4, 4, 0, 0]} maxBarSize={16}>
+                              {chartData14WithTrend.map((entry, index) => (
+                                <Cell 
+                                  key={`cell-14-${index}`} 
+                                  fill={
+                                    entry.mg === 0 
+                                      ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
+                                      : entry.mg > 400 
+                                      ? '#ef4444' 
+                                      : currentAccent.primary
+                                  }
+                                />
+                              ))}
+                            </Bar>
+                            {/* Visual Linear Regression Trend Line */}
+                            <Line 
+                              type="monotone" 
+                              dataKey="trend" 
+                              stroke={total14DayMg === 0 ? '#10b981' : isDeclining14 ? '#10b981' : isIncreasing14 ? '#f43f5e' : currentAccent.primary} 
+                              strokeWidth={2} 
+                              strokeDasharray="3 3" 
+                              dot={false}
+                              activeDot={{ r: 4 }}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-[230px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={weeklyChartDataWithTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
+                            dy={8}
+                          />
+                          <YAxis 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
+                          />
+                          <Tooltip 
+                            cursor={{ fill: theme === 'light' ? '#f1f5f9' : '#1e293b', opacity: 0.4 }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const item = payload[0].payload;
+                                const mgVal = Number(payload.find(p => p.dataKey === 'mg')?.value ?? 0);
+                                const trendVal = Number(payload.find(p => p.dataKey === 'trend')?.value ?? 0);
+                                return (
+                                  <div className={`text-xs py-2.5 px-3.5 rounded-2xl shadow-2xl border min-w-[210px] ${modalBg}`}>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-bold text-xs" style={{ color: currentAccent.primary }}>
+                                        {item.fullDate}
+                                      </span>
+                                      {item.isCurrentWeek && (
+                                        <span 
+                                          className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white uppercase tracking-wider"
+                                          style={{ backgroundColor: currentAccent.primary }}
+                                        >
+                                          Bieżący tydzień
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="mt-2 space-y-1">
+                                      <div className="flex items-center justify-between text-xs font-semibold">
+                                        <span>Suma tygodnia:</span>
+                                        <span className={mgVal === 0 ? 'text-emerald-500' : ''}>{mgVal} mg</span>
+                                      </div>
+                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
+                                        <span>Średnia dzienna:</span>
+                                        <span>~{item.avgDaily} mg/dzień</span>
+                                      </div>
+                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
+                                        <span>Czyste dni:</span>
+                                        <span className="text-emerald-400 font-medium">{item.cleanDays}/7 dni</span>
+                                      </div>
+                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
+                                        <span>Wartość trendu:</span>
+                                        <span>~{trendVal} mg</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          {/* Weekly Consumption Bars */}
+                          <Bar dataKey="mg" radius={[6, 6, 0, 0]} maxBarSize={26}>
+                            {weeklyChartDataWithTrend.map((entry, index) => (
+                              <Cell 
+                                key={`cell-w-${index}`} 
+                                fill={
+                                  entry.mg === 0 
+                                    ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
+                                    : entry.isCurrentWeek
+                                    ? currentAccent.primary
+                                    : currentAccent.primary
+                                }
+                              />
+                            ))}
+                          </Bar>
+                          {/* Weekly Linear Regression Trend Line */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="trend" 
+                            stroke={totalWeeklyMg === 0 ? '#10b981' : isDecliningW ? '#10b981' : isIncreasingW ? '#f43f5e' : currentAccent.primary} 
+                            strokeWidth={2.5} 
+                            strokeDasharray="4 4" 
+                            dot={{ 
+                              r: 3.5, 
+                              strokeWidth: 2, 
+                              fill: theme === 'light' ? '#ffffff' : '#0f1118',
+                              stroke: totalWeeklyMg === 0 ? '#10b981' : isDecliningW ? '#10b981' : isIncreasingW ? '#f43f5e' : currentAccent.primary
+                            }}
+                            activeDot={{ r: 5 }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
 
                 {/* NAJCZĘSTSZE PORY SPOŻYCIA (ANALIZA CZASOWA & KRYTYCZNE PUNKTY DNIA) */}
@@ -2482,95 +3019,111 @@ export default function Page() {
                 </p>
 
                 {/* TIME ADJUSTMENT SECTION */}
-                <div className={`border rounded-2xl p-4 mb-5 ${innerItemBg}`}>
+                <div className={`border rounded-2xl p-4 mb-5 transition-all ${innerItemBg}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2 text-xs font-semibold">
                       <Clock size={14} style={{ color: currentAccent.primary }} />
                       <span>Kiedy wypito napój?</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomTimeOpen(!isCustomTimeOpen)}
-                      className="text-[11px] font-medium underline underline-offset-2"
-                      style={{ color: currentAccent.primary }}
-                    >
-                      {isCustomTimeOpen ? 'Ukryj edycję czasu' : 'Dodaj godzinę / Wypite wcześniej'}
-                    </button>
+                    {isCustomTimeOpen && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomTimeOpen(false)}
+                        className={`text-[10px] font-bold px-2 py-1 rounded-md border ${cardClasses}`}
+                      >
+                        Ukryj
+                      </button>
+                    )}
                   </div>
 
-                  {/* Quick offset buttons */}
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  {!isCustomTimeOpen && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const nowD = new Date();
-                        setCustomTimeDate(format(nowD, 'yyyy-MM-dd'));
-                        setCustomTimeHour(format(nowD, 'HH:mm'));
-                        setIsCustomTimeOpen(false);
+                      onClick={() => setIsCustomTimeOpen(true)}
+                      className="w-full py-3.5 rounded-xl text-xs font-bold border transition-all active:scale-[0.98] flex justify-center items-center gap-2 mb-2 shadow-sm"
+                      style={{ 
+                        backgroundColor: currentAccent.badgeBg,
+                        color: currentAccent.primary,
+                        borderColor: currentAccent.badgeBorder
                       }}
-                      className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${
-                        !isCustomTimeOpen 
-                          ? 'font-semibold border-transparent text-white' 
-                          : `${cardClasses} hover:border-zinc-500`
-                      }`}
-                      style={!isCustomTimeOpen ? { backgroundColor: currentAccent.primary } : {}}
                     >
-                      Teraz (przed chwilą)
+                      <Clock size={16} />
+                      Ustaw dokładną godzinę spożycia
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => applyTimeOffset(15)}
-                      className={`text-xs px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
-                    >
-                      -15 min
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyTimeOffset(60)}
-                      className={`text-xs px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
-                    >
-                      -1 godz
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyTimeOffset(120)}
-                      className={`text-xs px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
-                    >
-                      -2 godz
-                    </button>
-                  </div>
+                  )}
 
                   {/* Datetime Pickers */}
-                  {isCustomTimeOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-500/20"
-                    >
-                      <div>
-                        <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
-                          Data
-                        </label>
-                        <input
-                          type="date"
-                          value={customTimeDate}
-                          onChange={(e) => setCustomTimeDate(e.target.value)}
-                          className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
-                        />
-                      </div>
-                      <div>
-                        <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
-                          Godzina
-                        </label>
-                        <input
-                          type="time"
-                          value={customTimeHour}
-                          onChange={(e) => setCustomTimeHour(e.target.value)}
-                          className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
+                  <AnimatePresence>
+                    {isCustomTimeOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        {/* Quick offset buttons */}
+                        <div className="flex flex-wrap gap-2 mb-3 mt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nowD = new Date();
+                              setCustomTimeDate(format(nowD, 'yyyy-MM-dd'));
+                              setCustomTimeHour(format(nowD, 'HH:mm'));
+                            }}
+                            className={`text-[11px] px-3 py-1.5 rounded-xl border font-semibold ${cardClasses} hover:border-zinc-500`}
+                          >
+                            Teraz
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTimeOffset(15)}
+                            className={`text-[11px] px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
+                          >
+                            -15 min
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTimeOffset(60)}
+                            className={`text-[11px] px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
+                          >
+                            -1 godz
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTimeOffset(120)}
+                            className={`text-[11px] px-2.5 py-1.5 rounded-xl border ${cardClasses} hover:border-zinc-500`}
+                          >
+                            -2 godz
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-500/20">
+                          <div>
+                            <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
+                              Data
+                            </label>
+                            <input
+                              type="date"
+                              value={customTimeDate}
+                              onChange={(e) => setCustomTimeDate(e.target.value)}
+                              className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
+                            />
+                          </div>
+                          <div>
+                            <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
+                              Godzina
+                            </label>
+                            <input
+                              type="time"
+                              value={customTimeHour}
+                              onChange={(e) => setCustomTimeHour(e.target.value)}
+                              className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* DRINK SELECTION LIST */}
