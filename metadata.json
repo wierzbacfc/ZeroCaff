@@ -1,0 +1,8 @@
+{
+  "name": "ZeroCaff",
+  "description": "Aplikacja do walki z uzależnieniem od kofeiny z instalacją PWA na telefonach Android z ładną ikonką, potrójnym pierścieniem czasu, automatycznym wykrywaniem aktualizacji na serwerze i powiadomieniami Web Notification API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
