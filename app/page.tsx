@@ -1154,9 +1154,9 @@ export default function Page() {
           <button
             id="top-settings-btn"
             onClick={() => setView(view === 'settings' ? 'home' : 'settings')}
-            className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+            className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm active:scale-95 backdrop-blur-md ${
               view === 'settings' 
-                ? 'border-transparent text-white ring-2 ring-offset-2'
+                ? 'border-transparent text-white ring-2 ring-offset-2 shadow-md'
                 : `${cardClasses} ${subTextClasses} hover:text-zinc-100 hover:border-zinc-500`
             }`}
             style={view === 'settings' ? { 
