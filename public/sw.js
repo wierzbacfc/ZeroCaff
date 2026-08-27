@@ -1,13 +1,23 @@
 // ZeroCaff Service Worker
 const CACHE_NAME = 'zerocaff-cache-v1.2.0';
+
+// Calculate base path from location of sw.js
+const getBasePath = () => {
+  const path = self.location.pathname;
+  return path.substring(0, path.lastIndexOf('/'));
+};
+
+const basePath = getBasePath();
+const withBase = (path) => `${basePath}${path.startsWith('/') ? path : `/${path}`}`;
+
 const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/coffee_bean_logo.jpg',
-  '/icon-192.jpg',
-  '/icon-512.jpg',
-  '/icon-maskable.jpg',
-  '/version.json'
+  withBase('/'),
+  withBase('/manifest.json'),
+  withBase('/coffee_bean_logo.jpg'),
+  withBase('/icon-192.jpg'),
+  withBase('/icon-512.jpg'),
+  withBase('/icon-maskable.jpg'),
+  withBase('/version.json')
 ];
 
 self.addEventListener('install', (event) => {
@@ -47,7 +57,7 @@ self.addEventListener('fetch', (event) => {
   if (!url.protocol.startsWith('http')) return;
 
   // For version check, always fetch from network directly
-  if (url.pathname === '/version.json') {
+  if (url.pathname.endsWith('/version.json')) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
     );
@@ -70,7 +80,7 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
           if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/');
+            return caches.match(withBase('/'));
           }
           return new Response('Offline', { status: 503, statusText: 'Offline' });
         });

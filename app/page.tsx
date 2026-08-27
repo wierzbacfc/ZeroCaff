@@ -69,6 +69,12 @@ type Milestone = {
 // --- Application Constants ---
 const APP_VERSION = '1.2.0';
 
+const getAssetUrl = (path: string) => {
+  const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+};
+
 // --- Color Palettes ---
 const ACCENT_PALETTES: Record<AccentColorKey, AccentPalette> = {
   orange: {
@@ -600,7 +606,7 @@ export default function Page() {
       }
 
       // 2. Dual check with server version manifest
-      const res = await fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${getAssetUrl('/version.json')}?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setServerVersionInfo(data);
@@ -673,7 +679,7 @@ export default function Page() {
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register(getAssetUrl('/sw.js'))
         .then((reg) => {
           if (reg.waiting) {
             setWaitingWorker(reg.waiting);
@@ -1096,10 +1102,6 @@ export default function Page() {
     light: 'bg-white border-zinc-200',
   }[theme];
 
-  if (!isClient) {
-    return <div className="min-h-screen bg-[#090a0f]" />;
-  }
-
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 ${themeClasses}`}>
       <div className="max-w-md mx-auto relative min-h-screen">
@@ -1120,7 +1122,7 @@ export default function Page() {
               }}
             >
               <img 
-                src="/coffee_bean_logo.jpg" 
+                src={getAssetUrl('/coffee_bean_logo.jpg')} 
                 alt="ZeroCaff Coffee Bean Logo" 
                 width={40} 
                 height={40} 
@@ -1410,65 +1412,56 @@ export default function Page() {
 
                   <div className="grid grid-cols-3 gap-2 w-full">
                     {/* Outer Ring: DAYS */}
-                    <div 
-                      className={`border rounded-2xl p-2.5 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}
-                      style={{ borderLeftWidth: '3px', borderLeftColor: currentAccent.primary }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: currentAccent.primary }} />
+                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: currentAccent.primary }} />
                           Dni
                         </span>
-                        <span className="text-[9px] font-medium opacity-60">Zewnętrzny</span>
+                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Zewn.</span>
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-black tabular-nums">{days}</span>
-                        <span className="text-[10px] font-medium opacity-70">dni</span>
+                        <span className="text-xl font-bold tabular-nums">{days}</span>
+                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>dni</span>
                       </div>
-                      <span className="text-[9px] truncate text-zinc-400 mt-0.5">
+                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
                         cykl 7d: {Math.round(daysCycleProgress)}%
                       </span>
                     </div>
 
                     {/* Middle Ring: HOURS */}
-                    <div 
-                      className={`border rounded-2xl p-2.5 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}
-                      style={{ borderLeftWidth: '3px', borderLeftColor: '#06b6d4' }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-cyan-400">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block shrink-0" />
                           Godziny
                         </span>
-                        <span className="text-[9px] font-medium opacity-60">Środkowy</span>
+                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Środk.</span>
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-black tabular-nums text-cyan-400">{hours}</span>
-                        <span className="text-[10px] font-medium opacity-70">/ 24h</span>
+                        <span className="text-xl font-bold tabular-nums">{hours}</span>
+                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 24h</span>
                       </div>
-                      <span className="text-[9px] truncate text-zinc-400 mt-0.5">
+                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
                         doba: {Math.round(hoursProgress)}%
                       </span>
                     </div>
 
                     {/* Inner Ring: MINUTES */}
-                    <div 
-                      className={`border rounded-2xl p-2.5 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}
-                      style={{ borderLeftWidth: '3px', borderLeftColor: '#8b5cf6' }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 text-violet-400">
-                          <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-violet-400 inline-block shrink-0" />
                           Minuty
                         </span>
-                        <span className="text-[9px] font-medium opacity-60">Wewnętrzny</span>
+                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Wewn.</span>
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-black tabular-nums text-violet-400">{minutes}</span>
-                        <span className="text-[10px] font-medium opacity-70">/ 60m</span>
+                        <span className="text-xl font-bold tabular-nums">{minutes}</span>
+                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 60m</span>
                       </div>
-                      <span className="text-[9px] truncate text-zinc-400 mt-0.5">
-                        godzina: {Math.round(minutesProgress)}%
+                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
+                        godz: {Math.round(minutesProgress)}%
                       </span>
                     </div>
                   </div>
@@ -2697,7 +2690,7 @@ export default function Page() {
                 </div>
 
                 <div className="flex items-center gap-3 p-3.5 rounded-2xl border mb-4" style={{ backgroundColor: currentAccent.badgeBg, borderColor: currentAccent.badgeBorder }}>
-                  <img src="/icon-192.jpg" alt="ZeroCaff" className="w-12 h-12 rounded-xl object-cover border" style={{ borderColor: currentAccent.primary }} />
+                  <img src={getAssetUrl('/icon-192.jpg')} alt="ZeroCaff" className="w-12 h-12 rounded-xl object-cover border" style={{ borderColor: currentAccent.primary }} />
                   <div>
                     <div className="text-xs font-bold">ZeroCaff - Wolność od Kofeiny</div>
                     <div className={`text-[11px] ${subTextClasses}`}>Aplikacja zainstaluje się z ładną ikonką na pulpicie telefonu</div>

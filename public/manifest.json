@@ -2,8 +2,8 @@
   "name": "ZeroCaff - Wolność od Kofeiny",
   "short_name": "ZeroCaff",
   "description": "Aplikacja do walki z uzależnieniem od kofeiny z potrójnym pierścieniem czasu, analizą nawyków i kamieniami milowymi.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#f97316",
@@ -11,19 +11,19 @@
   "categories": ["health", "lifestyle", "productivity"],
   "icons": [
     {
-      "src": "/icon-192.jpg",
+      "src": "icon-192.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.jpg",
+      "src": "icon-512.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable.jpg",
+      "src": "icon-maskable.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "maskable"
