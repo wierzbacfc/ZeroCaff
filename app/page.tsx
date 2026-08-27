@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Coffee, Zap, Leaf, GlassWater, Trophy, Activity,
-  Plus, X, TrendingUp, TrendingDown, RotateCcw, Home, BarChart2,
+  Plus, Minus, X, TrendingUp, TrendingDown, RotateCcw, Home, BarChart2,
   Calendar, Flame, Sparkles, CheckCircle2, Lock,
-  Clock, Award, ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, Info,
+  Clock, Award, ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Info,
   Settings, Palette, Sun, Moon, SunMedium, Sunset, Sunrise, CloudMoon,
   Monitor, Trash2, Check, AlertTriangle, Brain,
   Heart, Compass, ArrowRight, BatteryCharging,
@@ -393,6 +393,13 @@ export default function Page() {
   // Chart View State (Daily 60 Days vs Weekly)
   const [chartViewMode, setChartViewMode] = useState<'daily' | 'weekly'>('daily');
   const dailyChartScrollRef = useRef<HTMLDivElement>(null);
+
+  // Quick Past Days Calendar Filler State (60 Days Modal)
+  const [quickFillDrinkId, setQuickFillDrinkId] = useState<string>('coffee');
+  const [showQuickFillModal, setShowQuickFillModal] = useState<boolean>(false);
+  const [quickFillSortOrder, setQuickFillSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState<boolean>(true);
+  const quickFillScrollRef = useRef<HTMLDivElement>(null);
 
   // Modals & Sheets
   const [showAddModal, setShowAddModal] = useState(false);
@@ -935,6 +942,58 @@ export default function Page() {
     }
   };
 
+  // Quick Past Days (60 Days) Calendar Filler Handlers
+  const addDrinkToDate = (targetDate: Date, drinkId?: string) => {
+    const selectedDrink = DRINKS.find(d => d.id === (drinkId || quickFillDrinkId)) || DRINKS[0];
+    const logDate = new Date(targetDate);
+    const isTargetToday = isSameDay(logDate, new Date());
+    if (isTargetToday) {
+      logDate.setTime(Date.now());
+    } else {
+      logDate.setHours(10, 0, 0, 0);
+    }
+    const logTimestamp = logDate.getTime();
+
+    const newLog: DrinkLog = {
+      id: Math.random().toString(36).substring(7),
+      timestamp: logTimestamp,
+      drinkId: selectedDrink.id,
+      mg: selectedDrink.mg,
+    };
+
+    const newLogs = [newLog, ...logs];
+    setLogs(newLogs);
+    localStorage.setItem('zerocaff_logs', JSON.stringify(newLogs));
+
+    if (logTimestamp >= lastIntake || logs.length === 0) {
+      const latest = Math.max(...newLogs.map(l => l.timestamp));
+      setLastIntake(latest);
+      localStorage.setItem('zerocaff_last_intake', latest.toString());
+    }
+    showToast(`Dodano: ${selectedDrink.name} na dzień ${format(targetDate, 'dd.MM.yyyy')}`);
+  };
+
+  const removeDrinkFromDate = (targetDate: Date) => {
+    const dayLogs = logs.filter(l => isSameDay(new Date(l.timestamp), targetDate));
+    if (dayLogs.length === 0) return;
+
+    const logToRemove = [...dayLogs].sort((a, b) => b.timestamp - a.timestamp)[0];
+    const newLogs = logs.filter(l => l.id !== logToRemove.id);
+    setLogs(newLogs);
+    localStorage.setItem('zerocaff_logs', JSON.stringify(newLogs));
+
+    if (newLogs.length > 0) {
+      const latest = Math.max(...newLogs.map(l => l.timestamp));
+      setLastIntake(latest);
+      localStorage.setItem('zerocaff_last_intake', latest.toString());
+    } else {
+      const resetTime = Date.now() - 38 * 3600 * 1000;
+      setLastIntake(resetTime);
+      localStorage.setItem('zerocaff_last_intake', resetTime.toString());
+    }
+    showToast(`Usunięto napój z dnia ${format(targetDate, 'dd.MM.yyyy')}`);
+  };
+
   const resetTimerDirectly = () => {
     if (confirm("Czy na pewno chcesz zresetować swój licznik czasu bez dodawania wpisu w historii?")) {
       const timestamp = Date.now();
@@ -1049,54 +1108,66 @@ export default function Page() {
   const trackStrokeColor = theme === 'light' ? '#e2e8f0' : theme === 'gray' ? '#2e313e' : '#1e212b';
   const trackBorderColor = theme === 'light' ? '#cbd5e1' : theme === 'gray' ? '#3d4152' : '#272a38';
 
-  // --- Stats Calculations: 14-Day Daily Chart with Linear Regression ---
-  const chartData14 = Array.from({ length: 14 }).map((_, i) => {
-    const date = subDays(now, 13 - i);
+  // --- Stats Calculations: 60-Day Daily Chart with Linear Regression ---
+  const DAILY_DAYS_COUNT = 60;
+  const chartData60 = Array.from({ length: DAILY_DAYS_COUNT }).map((_, i) => {
+    const date = subDays(now, (DAILY_DAYS_COUNT - 1) - i);
     const dayLogs = logs.filter(l => isSameDay(new Date(l.timestamp), date));
     const totalMg = dayLogs.reduce((sum, l) => sum + l.mg, 0);
     const drinksDetail = dayLogs.map(l => {
       const drink = DRINKS.find(d => d.id === l.drinkId);
       return `${drink?.name || 'Napój'} (${l.mg} mg)`;
     });
+    const daysAgo = (DAILY_DAYS_COUNT - 1) - i;
+    let relativeLabel = '';
+    if (daysAgo === 0) relativeLabel = 'DZIŚ';
+    else if (daysAgo === 1) relativeLabel = 'WCZORAJ';
+    else if (daysAgo === 2) relativeLabel = '2 DNI TEMU';
+    else relativeLabel = format(date, 'EEE', { locale: pl }).toUpperCase();
+
     return {
+      date,
       name: format(date, 'd MMM', { locale: pl }),
       dayAbbr: format(date, 'EEE', { locale: pl }),
       fullDate: format(date, 'EEEE, d MMMM yyyy', { locale: pl }),
       shortDate: format(date, 'dd.MM'),
+      relativeLabel,
+      daysAgo,
       mg: totalMg,
       drinksCount: dayLogs.length,
       drinksDetail,
-      isToday: i === 13,
+      dayLogs,
+      isToday: i === (DAILY_DAYS_COUNT - 1),
     };
   });
 
-  // Linear Regression for 14-Day Daily Trendline
-  const nPoints14 = chartData14.length;
-  const xMean14 = (nPoints14 - 1) / 2;
-  const yMean14 = chartData14.reduce((sum, d) => sum + d.mg, 0) / nPoints14;
-  let numTrend14 = 0;
-  let denTrend14 = 0;
-  chartData14.forEach((d, i) => {
-    numTrend14 += (i - xMean14) * (d.mg - yMean14);
-    denTrend14 += Math.pow(i - xMean14, 2);
+  // Linear Regression for 60-Day Daily Trendline
+  const nPoints60 = chartData60.length;
+  const xMean60 = (nPoints60 - 1) / 2;
+  const yMean60 = chartData60.reduce((sum, d) => sum + d.mg, 0) / nPoints60;
+  let numTrend60 = 0;
+  let denTrend60 = 0;
+  chartData60.forEach((d, i) => {
+    numTrend60 += (i - xMean60) * (d.mg - yMean60);
+    denTrend60 += Math.pow(i - xMean60, 2);
   });
-  const trendSlope14 = denTrend14 === 0 ? 0 : numTrend14 / denTrend14;
-  const trendIntercept14 = yMean14 - trendSlope14 * xMean14;
+  const trendSlope60 = denTrend60 === 0 ? 0 : numTrend60 / denTrend60;
+  const trendIntercept60 = yMean60 - trendSlope60 * xMean60;
 
-  const chartData14WithTrend = chartData14.map((d, i) => ({
+  const chartData60WithTrend = chartData60.map((d, i) => ({
     ...d,
-    trend: Math.max(0, Math.round(trendSlope14 * i + trendIntercept14)),
+    trend: Math.max(0, Math.round(trendSlope60 * i + trendIntercept60)),
   }));
 
-  const startTrendVal14 = Math.max(0, Math.round(trendIntercept14));
-  const endTrendVal14 = Math.max(0, Math.round(trendSlope14 * 13 + trendIntercept14));
-  const total14DayMg = chartData14.reduce((sum, d) => sum + d.mg, 0);
-  const cleanDays14 = chartData14.filter(d => d.mg === 0).length;
-  const avgDailyMg14 = Math.round(total14DayMg / 14);
-  const isDeclining14 = trendSlope14 < -0.5;
-  const isIncreasing14 = trendSlope14 > 0.5;
-  const trendPercent14 = startTrendVal14 > 0 
-    ? Math.round(Math.abs((endTrendVal14 - startTrendVal14) / startTrendVal14) * 100)
+  const startTrendVal60 = Math.max(0, Math.round(trendIntercept60));
+  const endTrendVal60 = Math.max(0, Math.round(trendSlope60 * (DAILY_DAYS_COUNT - 1) + trendIntercept60));
+  const total60DayMg = chartData60.reduce((sum, d) => sum + d.mg, 0);
+  const cleanDays60 = chartData60.filter(d => d.mg === 0).length;
+  const avgDailyMg60 = Math.round(total60DayMg / DAILY_DAYS_COUNT);
+  const isDeclining60 = trendSlope60 < -0.3;
+  const isIncreasing60 = trendSlope60 > 0.3;
+  const trendPercent60 = startTrendVal60 > 0 
+    ? Math.round(Math.abs((endTrendVal60 - startTrendVal60) / startTrendVal60) * 100)
     : 0;
 
   // --- Stats Calculations: 12-Week Weekly Chart with Aggregation ---
@@ -1170,7 +1241,7 @@ export default function Page() {
     ? Math.round(Math.abs((endTrendValW - startTrendValW) / startTrendValW) * 100)
     : 0;
 
-  const todaysTotalMg = chartData14[13]?.mg || 0;
+  const todaysTotalMg = chartData60[DAILY_DAYS_COUNT - 1]?.mg || 0;
   const weekTotalDrinks = logs.filter(l => now - l.timestamp <= 7 * 24 * 3600 * 1000).length;
   const totalCaffeineSavedEstimate = Math.round((diffSeconds / 3600) * 8.3); // ~200mg/24h saved
   const totalHoursClean = Math.floor(diffSeconds / 3600);
@@ -1853,22 +1924,23 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Progress Bar with Embedded Percentage */}
+                  {/* Progress Bar */}
                   <div className={`w-full h-5 rounded-full p-0.5 border relative z-10 mb-2 flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/40 border-zinc-800/80'}`}>
                     <motion.div 
-                      className="h-full rounded-full flex items-center justify-end px-2 min-w-[2rem]"
+                      className="h-full rounded-full"
                       style={{
                         backgroundColor: currentAccent.primary,
                         boxShadow: `0 0 12px ${currentAccent.glow}`
                       }}
                       initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(milestoneProgress, 8)}%` }}
+                      animate={{ width: `${milestoneProgress}%` }}
                       transition={{ duration: 1, ease: "easeOut" }}
-                    >
-                      <span className="text-[10px] font-black text-white leading-none shadow-sm select-none bg-black/25 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                        {Math.floor(milestoneProgress)}%
-                      </span>
-                    </motion.div>
+                    />
+                    
+                    {/* Progress percentage on the right, floating over or next to the bar */}
+                    <div className="absolute right-3 font-bold text-sm select-none" style={{ color: currentAccent.primary, textShadow: theme === 'light' ? '0 1px 2px rgba(255,255,255,0.8)' : '0 1px 4px rgba(0,0,0,0.8)' }}>
+                      {Math.floor(milestoneProgress)}%
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs relative z-10">
@@ -2100,7 +2172,7 @@ export default function Page() {
                           Wykres Spożycia & Trend
                         </h3>
                         <span className={`text-[10px] ${muteTextClasses}`}>
-                          {chartViewMode === 'daily' ? 'Ostatnie 14 dni (przewijane poziomo)' : 'Ostatnie 12 tygodni (zagregowane)'}
+                          {chartViewMode === 'daily' ? 'Ostatnie 60 dni (przewijane poziomo)' : 'Ostatnie 12 tygodni (zagregowane)'}
                         </span>
                       </div>
                     </div>
@@ -2120,7 +2192,7 @@ export default function Page() {
                         }}
                       >
                         <Calendar size={13} />
-                        <span>Dzienny (14 dni)</span>
+                        <span>Dzienny (60 dni)</span>
                       </button>
                       <button
                         type="button"
@@ -2147,7 +2219,7 @@ export default function Page() {
                         {chartViewMode === 'daily' ? 'Czyste dni' : 'Czyste tygodnie'}
                       </div>
                       <div className="text-sm font-bold text-emerald-400 mt-0.5">
-                        {chartViewMode === 'daily' ? `${cleanDays14} / 14` : `${cleanWeeksCount} / 12`}
+                        {chartViewMode === 'daily' ? `${cleanDays60} / 60` : `${cleanWeeksCount} / 12`}
                       </div>
                     </div>
                     <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
@@ -2155,7 +2227,7 @@ export default function Page() {
                         {chartViewMode === 'daily' ? 'Śr. dzienna' : 'Śr. tygodniowa'}
                       </div>
                       <div className="text-sm font-bold mt-0.5" style={{ color: currentAccent.primary }}>
-                        {chartViewMode === 'daily' ? `~${avgDailyMg14} mg` : `~${avgWeeklyMg} mg`}
+                        {chartViewMode === 'daily' ? `~${avgDailyMg60} mg` : `~${avgWeeklyMg} mg`}
                       </div>
                     </div>
                     <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
@@ -2163,7 +2235,7 @@ export default function Page() {
                         Suma kofeiny
                       </div>
                       <div className="text-sm font-bold mt-0.5">
-                        {chartViewMode === 'daily' ? `${total14DayMg} mg` : `${totalWeeklyMg} mg`}
+                        {chartViewMode === 'daily' ? `${total60DayMg} mg` : `${totalWeeklyMg} mg`}
                       </div>
                     </div>
                   </div>
@@ -2172,20 +2244,20 @@ export default function Page() {
                   <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-2xl border text-xs font-medium bg-zinc-500/5">
                     <div className="flex items-center gap-2">
                       {chartViewMode === 'daily' ? (
-                        total14DayMg === 0 ? (
+                        total60DayMg === 0 ? (
                           <>
                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-emerald-500 font-bold">0 mg w 14 dniach – 100% Czystości! 🔥</span>
+                            <span className="text-emerald-500 font-bold">0 mg w 60 dniach – 100% Czystości! 🔥</span>
                           </>
-                        ) : isDeclining14 ? (
+                        ) : isDeclining60 ? (
                           <>
                             <TrendingDown size={15} className="text-emerald-500" />
-                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercent14}%) w 14 dniach – Brawo!</span>
+                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercent60}%) w 60 dniach – Brawo!</span>
                           </>
-                        ) : isIncreasing14 ? (
+                        ) : isIncreasing60 ? (
                           <>
                             <TrendingUp size={15} className="text-rose-500" />
-                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercent14}%) w 14 dniach – Zadbaj o limit</span>
+                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercent60}%) w 60 dniach – Zadbaj o limit</span>
                           </>
                         ) : (
                           <>
@@ -2262,16 +2334,16 @@ export default function Page() {
                       onMouseUp={handleChartMouseUp}
                       onMouseMove={handleChartMouseMove}
                     >
-                      <div className="min-w-[600px] h-[230px]">
+                      <div className="min-w-[1800px] h-[230px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={chartData14WithTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                          <ComposedChart data={chartData60WithTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
                             <XAxis 
                               dataKey="name" 
                               axisLine={false} 
                               tickLine={false} 
                               interval={0}
                               tick={({ x, y, payload }) => {
-                                const item = chartData14WithTrend.find(d => d.name === payload.value);
+                                const item = chartData60WithTrend.find(d => d.name === payload.value);
                                 const isToday = item?.isToday;
                                 return (
                                   <g transform={`translate(${x},${y})`}>
@@ -2361,9 +2433,9 @@ export default function Page() {
                             />
                             {/* Daily Consumption Bars */}
                             <Bar dataKey="mg" radius={[4, 4, 0, 0]} maxBarSize={16}>
-                              {chartData14WithTrend.map((entry, index) => (
+                              {chartData60WithTrend.map((entry, index) => (
                                 <Cell 
-                                  key={`cell-14-${index}`} 
+                                  key={`cell-60-${index}`} 
                                   fill={
                                     entry.mg === 0 
                                       ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
@@ -2378,7 +2450,7 @@ export default function Page() {
                             <Line 
                               type="monotone" 
                               dataKey="trend" 
-                              stroke={total14DayMg === 0 ? '#10b981' : isDeclining14 ? '#10b981' : isIncreasing14 ? '#f43f5e' : currentAccent.primary} 
+                              stroke={total60DayMg === 0 ? '#10b981' : isDeclining60 ? '#10b981' : isIncreasing60 ? '#f43f5e' : currentAccent.primary} 
                               strokeWidth={2} 
                               strokeDasharray="3 3" 
                               dot={false}
@@ -2486,6 +2558,43 @@ export default function Page() {
                   )}
                 </div>
 
+                {/* SZYBKIE UZUPEŁNIANIE KALENDARZA (60 DNI) - ELEGANCKA KARTA Z PRZEJŚCIEM DO OKNA */}
+                <div id="quick-calendar-filler-card" className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
+                  <div className="flex items-start gap-3.5 mb-4">
+                    <div 
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0"
+                      style={{
+                        backgroundColor: currentAccent.badgeBg,
+                        borderColor: currentAccent.badgeBorder,
+                        color: currentAccent.primary,
+                      }}
+                    >
+                      <CalendarDays size={22} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold tracking-tight text-white">
+                        Szybkie Uzupełnianie Kalendarza (60 Dni)
+                      </h3>
+                      <p className={`text-xs mt-1 leading-relaxed ${muteTextClasses}`}>
+                        Otwórz wyskakujące okienko z pojemną siatką 60 dni na jednym ekranie, aby szybko przeklikać wypite kawy w historii.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickFillModal(true)}
+                    className="w-full py-3 px-5 rounded-2xl text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md hover:brightness-110 active:scale-98"
+                    style={{
+                      backgroundColor: currentAccent.primary,
+                      boxShadow: `0 0 16px ${currentAccent.glow}`,
+                    }}
+                  >
+                    <CalendarDays size={18} />
+                    <span>Otwórz okno uzupełniania (60 dni)</span>
+                  </button>
+                </div>
+
                 {/* NAJCZĘSTSZE PORY SPOŻYCIA (ANALIZA CZASOWA & KRYTYCZNE PUNKTY DNIA) */}
                 <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
                   <div className="flex items-center justify-between mb-3">
@@ -2575,46 +2684,96 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* History Logs */}
+                {/* History Logs (Collapsible/Expandable) */}
                 <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider">
-                      Rejestr Zdarzeń
-                    </span>
-                    <span className={`text-xs ${muteTextClasses}`}>{logs.length} wpisów</span>
+                  <div 
+                    onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
+                    className="flex items-center justify-between cursor-pointer select-none group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider">
+                        Rejestr Zdarzeń
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${innerItemBg} ${muteTextClasses}`}>
+                        {logs.length} {logs.length === 1 ? 'wpis' : logs.length > 1 && logs.length < 5 ? 'wpisy' : 'wpisów'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsHistoryCollapsed(!isHistoryCollapsed);
+                      }}
+                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${innerItemBg} hover:opacity-90`}
+                      style={{ color: currentAccent.primary }}
+                    >
+                      <span>{isHistoryCollapsed ? 'Rozwiń' : 'Zwiń'}</span>
+                      {isHistoryCollapsed ? (
+                        <ChevronDown size={14} className="transition-transform duration-200" />
+                      ) : (
+                        <ChevronUp size={14} className="transition-transform duration-200" />
+                      )}
+                    </button>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Logs Content Area */}
+                  <div className="mt-4">
                     {logs.length === 0 ? (
-                      <div className={`text-center py-8 text-sm ${muteTextClasses}`}>
+                      <div className={`text-center py-6 text-sm ${muteTextClasses}`}>
                         Czysto! Nie zanotowano żadnych napojów.
                       </div>
                     ) : (
-                      logs.map(log => {
-                        const drink = DRINKS.find(d => d.id === log.drinkId) || DRINKS[0];
-                        return (
-                          <div key={log.id} className={`rounded-2xl p-3 flex items-center justify-between border ${innerItemBg}`}>
-                             <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${drink.color}`}>
-                                  <drink.icon size={16} />
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-sm">{drink.name}</p>
-                                  <p className={`text-[11px] font-medium ${muteTextClasses}`}>
-                                    {format(new Date(log.timestamp), 'd MMM, HH:mm', { locale: pl })} • {log.mg} mg
-                                  </p>
-                                </div>
-                             </div>
-                             <button 
-                              onClick={() => removeLog(log.id)}
-                              className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
-                              title="Usuń wpis"
-                             >
-                               <X size={15} />
-                             </button>
-                          </div>
-                        );
-                      })
+                      <div className="space-y-2">
+                        {(isHistoryCollapsed ? logs.slice(0, 3) : logs).map(log => {
+                          const drink = DRINKS.find(d => d.id === log.drinkId) || DRINKS[0];
+                          return (
+                            <div key={log.id} className={`rounded-2xl p-3 flex items-center justify-between border ${innerItemBg} transition-all`}>
+                               <div className="flex items-center gap-3">
+                                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${drink.color}`}>
+                                    <drink.icon size={16} />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-sm">{drink.name}</p>
+                                    <p className={`text-[11px] font-medium ${muteTextClasses}`}>
+                                      {format(new Date(log.timestamp), 'd MMM, HH:mm', { locale: pl })} • {log.mg} mg
+                                    </p>
+                                  </div>
+                               </div>
+                               <button 
+                                onClick={() => removeLog(log.id)}
+                                className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                                title="Usuń wpis"
+                               >
+                                 <X size={15} />
+                               </button>
+                            </div>
+                          );
+                        })}
+
+                        {/* Collapsed view indicator / toggle trigger */}
+                        {isHistoryCollapsed && logs.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsHistoryCollapsed(false)}
+                            className={`w-full py-2.5 px-4 rounded-xl border border-dashed text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${innerItemBg} ${muteTextClasses} hover:text-white`}
+                          >
+                            <span>Pokaż pozostałe {logs.length - 3} wpisów (Rozwiń)</span>
+                            <ChevronDown size={14} />
+                          </button>
+                        )}
+
+                        {!isHistoryCollapsed && logs.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsHistoryCollapsed(true)}
+                            className={`w-full py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all opacity-80 hover:opacity-100 ${muteTextClasses} mt-2`}
+                          >
+                            <span>Zwiń listę zdarzeń</span>
+                            <ChevronUp size={14} />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -3164,6 +3323,230 @@ export default function Page() {
                   >
                     <RotateCcw size={15} />
                     Tylko zresetuj timer do zera (bez dodawania napoju do historii)
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* POP-UP MODAL: SZYBKIE UZUPEŁNIANIE KALENDARZA (SIATKA 60 DNI NA JEDNYM EKRANIE) */}
+        <AnimatePresence>
+          {showQuickFillModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className={`w-full max-w-5xl border sm:rounded-3xl p-4 sm:p-6 shadow-2xl relative max-h-[92vh] flex flex-col ${modalBg}`}
+              >
+                {/* Modal Header */}
+                <div className="flex items-start justify-between pb-3 border-b border-zinc-500/20 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border text-xl font-black shrink-0"
+                      style={{
+                        backgroundColor: currentAccent.badgeBg,
+                        color: currentAccent.primary,
+                        borderColor: currentAccent.badgeBorder
+                      }}
+                    >
+                      <CalendarDays size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-xl font-bold tracking-tight">Szybkie Uzupełnianie Kalendarza (60 Dni)</h2>
+                      <p className={`text-xs mt-0.5 ${subTextClasses}`}>
+                        Przeglądaj dziesiątki dni na jednym ekranie. Kliknij <strong>+</strong> lub <strong>-</strong> przy odpowiednim dniu.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowQuickFillModal(false)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${innerItemBg} hover:opacity-80 transition-opacity shrink-0 ml-2`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Drink & Sort Selector Bar */}
+                <div className="mb-3 bg-zinc-500/5 p-3 rounded-2xl border border-zinc-500/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  {/* Drink Selector */}
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${muteTextClasses}`}>
+                      1. Wybierz napój przypisywany przyciskiem (+):
+                    </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      {DRINKS.map(drink => {
+                        const isSelected = quickFillDrinkId === drink.id;
+                        const DrinkIcon = drink.icon;
+                        return (
+                          <button
+                            key={`quick-modal-sel-${drink.id}`}
+                            type="button"
+                            onClick={() => setQuickFillDrinkId(drink.id)}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                              isSelected
+                                ? 'text-white shadow-md'
+                                : `${innerItemBg} ${muteTextClasses} hover:text-zinc-200`
+                            }`}
+                            style={{
+                              backgroundColor: isSelected ? currentAccent.primary : undefined,
+                              borderColor: isSelected ? currentAccent.primary : undefined,
+                            }}
+                          >
+                            <DrinkIcon size={14} />
+                            <span>{drink.name}</span>
+                            <span className="text-[10px] opacity-80">({drink.mg}mg)</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sort Selector */}
+                  <div className="shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-zinc-500/10">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${muteTextClasses}`}>
+                      2. Kolejność dni:
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-zinc-500/10 p-1 rounded-xl border border-zinc-500/10">
+                      <button
+                        type="button"
+                        onClick={() => setQuickFillSortOrder('newest')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          quickFillSortOrder === 'newest'
+                            ? 'bg-zinc-800 text-white shadow-sm'
+                            : `${muteTextClasses} hover:text-white`
+                        }`}
+                        style={{
+                          backgroundColor: quickFillSortOrder === 'newest' ? currentAccent.primary : undefined,
+                        }}
+                      >
+                        Od Dziś (Najnowsze)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFillSortOrder('oldest')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          quickFillSortOrder === 'oldest'
+                            ? 'bg-zinc-800 text-white shadow-sm'
+                            : `${muteTextClasses} hover:text-white`
+                        }`}
+                        style={{
+                          backgroundColor: quickFillSortOrder === 'oldest' ? currentAccent.primary : undefined,
+                        }}
+                      >
+                        Chronologicznie (Od 60 dni)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dense Grid of 60 Days (Robust & Perfectly Aligned) */}
+                <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin">
+                  <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-2.5">
+                    {(quickFillSortOrder === 'newest' ? [...chartData60].reverse() : chartData60).map((dayItem) => {
+                      const { date, mg, drinksCount, isToday, relativeLabel, shortDate } = dayItem;
+                      const formattedDateStr = format(date, 'd MMM', { locale: pl });
+                      const isClean = mg === 0;
+
+                      return (
+                        <div
+                          key={`quick-grid-${formattedDateStr}-${date.getTime()}`}
+                          className={`h-[124px] p-2.5 rounded-2xl border flex flex-col justify-between transition-all relative ${
+                            isToday
+                              ? 'ring-2 shadow-md'
+                              : `${innerItemBg}`
+                          }`}
+                          style={
+                            isToday
+                              ? {
+                                  borderColor: currentAccent.primary,
+                                  backgroundColor: currentAccent.badgeBg,
+                                  boxShadow: `0 0 10px ${currentAccent.glow}`,
+                                }
+                              : {}
+                          }
+                        >
+                          {/* Day Header */}
+                          <div className="text-center w-full pb-1 border-b border-zinc-500/15">
+                            <span 
+                              className={`text-[9px] uppercase tracking-wider font-extrabold block truncate ${isToday ? '' : muteTextClasses}`} 
+                              style={isToday ? { color: currentAccent.primary } : {}}
+                            >
+                              {relativeLabel}
+                            </span>
+                            <span className="text-xs font-extrabold tracking-tight block truncate">
+                              {shortDate}
+                            </span>
+                          </div>
+
+                          {/* Drinks Count & Mg */}
+                          <div className="text-center my-0.5">
+                            <span className={`text-xs font-extrabold block truncate ${isClean ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              {drinksCount} {drinksCount === 1 ? 'kawa' : drinksCount > 1 && drinksCount < 5 ? 'kawy' : 'kaw'}
+                            </span>
+                            <span className={`text-[10px] block font-medium truncate ${muteTextClasses}`}>
+                              {mg} mg
+                            </span>
+                          </div>
+
+                          {/* Plus & Minus Incrementor Controls */}
+                          <div className="flex items-center justify-between w-full gap-1 pt-1 border-t border-zinc-500/15">
+                            <button
+                              type="button"
+                              onClick={() => removeDrinkFromDate(date)}
+                              disabled={drinksCount === 0}
+                              className={`h-7 flex-1 rounded-xl border flex items-center justify-center transition-all ${
+                                drinksCount === 0
+                                  ? 'opacity-20 cursor-not-allowed border-zinc-700 text-zinc-500'
+                                  : 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/30 active:scale-90 shadow-sm'
+                              }`}
+                              title="Odejmij 1 napój z tego dnia"
+                            >
+                              <Minus size={13} strokeWidth={2.5} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => addDrinkToDate(date)}
+                              className="h-7 flex-1 rounded-xl text-white flex items-center justify-center gap-0.5 font-bold text-xs transition-all shadow-md active:scale-90"
+                              style={{
+                                backgroundColor: currentAccent.primary,
+                                boxShadow: `0 0 6px ${currentAccent.glow}`,
+                              }}
+                              title="Dodaj 1 wybrany napój do tego dnia"
+                            >
+                              <Plus size={13} strokeWidth={3} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="mt-3 pt-3 border-t border-zinc-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-xs font-semibold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                    <span className={subTextClasses}>
+                      Czyste dni: <strong className="text-emerald-400">{cleanDays60} z 60</strong> | Suma kofeiny: <strong className="text-white">{total60DayMg} mg</strong>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickFillModal(false)}
+                    className="w-full sm:w-auto py-2 px-6 rounded-xl text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                    style={{ backgroundColor: currentAccent.primary }}
+                  >
+                    Gotowe, zamknij okno
                   </button>
                 </div>
               </motion.div>
