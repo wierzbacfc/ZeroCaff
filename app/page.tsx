@@ -9,20 +9,18 @@ import {
   Clock, Award, ShieldCheck, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Info,
   Settings, Palette, Sun, Moon, SunMedium, Sunset, Sunrise, CloudMoon,
   Monitor, Trash2, Check, AlertTriangle, Brain,
-  Heart, Compass, ArrowRight, BatteryCharging,
+  Heart, Compass, ArrowRight, ArrowLeft, BatteryCharging,
   Bell, BellOff, BellRing, Target, AlertCircle,
   Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut,
-  CalendarDays
+  CalendarDays, CalendarClock, History, Eye, EyeOff
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
-} from 'recharts';
+import { D3CaffeineChart } from '../components/D3CaffeineChart';
 
 // --- Types ---
 type ThemeMode = 'dark' | 'gray' | 'light';
-type AccentColorKey = 'orange' | 'emerald' | 'amber' | 'cyan' | 'violet' | 'rose' | 'blue';
+type AccentColorKey = 'orange' | 'emerald' | 'amber' | 'cyan' | 'violet' | 'rose' | 'blue' | 'teal' | 'lime' | 'sunset';
 type AddBtnStyle = 'pill' | 'frosted' | 'tab' | 'coffee' | 'cube';
 
 type AccentPalette = {
@@ -163,6 +161,42 @@ const ACCENT_PALETTES: Record<AccentColorKey, AccentPalette> = {
     badgeBorder: 'rgba(59, 130, 246, 0.3)',
     btnGradient: 'from-blue-500 to-indigo-500',
   },
+  teal: {
+    key: 'teal',
+    name: 'Morski',
+    primary: '#14b8a6',
+    primaryHover: '#0d9488',
+    glow: 'rgba(20, 184, 166, 0.35)',
+    ring: '#14b8a6',
+    badgeBg: 'rgba(20, 184, 166, 0.12)',
+    badgeText: '#2dd4bf',
+    badgeBorder: 'rgba(20, 184, 166, 0.3)',
+    btnGradient: 'from-teal-500 to-emerald-500',
+  },
+  lime: {
+    key: 'lime',
+    name: 'Limonkowy',
+    primary: '#84cc16',
+    primaryHover: '#65a30d',
+    glow: 'rgba(132, 204, 22, 0.35)',
+    ring: '#84cc16',
+    badgeBg: 'rgba(132, 204, 22, 0.12)',
+    badgeText: '#a3e635',
+    badgeBorder: 'rgba(132, 204, 22, 0.3)',
+    btnGradient: 'from-lime-500 to-emerald-500',
+  },
+  sunset: {
+    key: 'sunset',
+    name: 'Sunset',
+    primary: '#7c3aed',
+    primaryHover: '#6d28d9',
+    glow: 'rgba(124, 58, 237, 0.4)',
+    ring: '#7c3aed',
+    badgeBg: 'rgba(124, 58, 237, 0.14)',
+    badgeText: '#fbbf24',
+    badgeBorder: 'rgba(245, 158, 11, 0.4)',
+    btnGradient: 'from-violet-700 via-purple-600 to-amber-500',
+  },
 };
 
 // --- Constant Drinks ---
@@ -174,43 +208,67 @@ const DRINKS: Drink[] = [
   { id: 'tea', name: 'Herbata Czarna/Zielona', mg: 30, icon: Leaf, color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30', accentColor: '#10b981' },
 ];
 
-// --- Comprehensive Milestones (Rich Early Stages + Intermediate + Long Term) ---
+// --- Comprehensive Milestones (Rich First Week Stages + Intermediate + Long Term) ---
 const MILESTONES: Milestone[] = [
+  {
+    id: 'm-30m',
+    code: '30M',
+    name: '30 Minut',
+    seconds: 30 * 60,
+    phase: 'Faza 1: Szczyt Wchłaniania',
+    benefit: 'Mobilizacja wątroby do neutralizacji',
+    description: 'Stężenie kofeiny w Twojej krwi osiąga punkt krytyczny. Związki wchłonęły się w żołądku i jelicie cienkim, a wątroba natychmiastowo aktywuje enzym CYP1A2, rozpoczynając intensywną pracę nad filtrowaniem ksenobiotyku.',
+    symptoms: 'Maksymalne pobudzenie receptorów, przyspieszona akcja serca, delikatne podwyższenie temperatury ciała.',
+    tips: 'Wypij natychmiast szklankę niegazowanej wody, aby wspomóc nerki w przygotowaniu do filtracji metabolitów.',
+    mentalBoost: 'To absolutny szczyt intoksykacji stymulantem – od teraz w Twoim ciele będzie już tylko mniej kofeiny!'
+  },
   {
     id: 'm-1h',
     code: '1H',
     name: '1 Godzina',
     seconds: 1 * 3600,
-    phase: 'Faza 1: Szczyt & Początek Filtracji',
-    benefit: 'Hamowanie wchłaniania i szczytowy metabolizm',
-    description: 'Dokładnie teraz stężenie kofeiny w Twojej krwi osiąga swoje absolutne maksimum. Cząsteczki przekroczyły już barierę krew-mózg, wymuszając nienaturalny wyrzut adrenaliny i noradrenaliny. Twoja wątroba właśnie aktywuje produkcję enzymu CYP1A2, rozpoczynając wielogodzinny proces filtrowania toksyny z krwioobiegu. To moment, w którym Twój organizm przestaje przyjmować, a zaczyna aktywnie walczyć o powrót do naturalnej homeostazy.',
-    symptoms: 'Podwyższone ciśnienie krwi, przyspieszone tętno, spłycony oddech oraz sztucznie napędzona czujność maskująca prawdziwe zmęczenie.',
-    tips: 'Wypij dużą szklankę wody mineralnej. Pomożesz w ten sposób nerkom, które za chwilę rozpoczną intensywne wydalanie zmetabolizowanych związków kofeiny.',
-    mentalBoost: 'Twoja świadoma decyzja zaczyna procentować. Ten stymulant właśnie osiągnął swój szczyt – od tej sekundy będzie go w Tobie już tylko mniej.'
+    phase: 'Faza 1: Początek Filtracji Wątrobowej',
+    benefit: 'Rozbijanie cząsteczek na metabolity',
+    description: 'Enzymy wątrobowe pracują na najwyższych obrotach, rozszczepiając kofeinę na paraksantynę, teobrominę i teofilinę. Rozpoczyna się systemowe odtruwanie krwioobiegu.',
+    symptoms: 'Utrzymujące się sztuczne pobudzenie, lekkie zwężenie naczyń krwionośnych w mózgu.',
+    tips: 'Unikaj stresowych bodźców i pozwól organizmowi skupić energię metaboliczną na oczyszczaniu.',
+    mentalBoost: 'Twoja wątroba już teraz aktywnie usuwa stymulant. Pierwsza godzina czystości została osiągnięta.'
   },
   {
     id: 'm-2h',
     code: '2H',
     name: '2 Godziny',
     seconds: 2 * 3600,
-    phase: 'Faza 1: Początek Eliminacji',
-    benefit: 'Spadek szczytowego stężenia i praca enzymów',
-    description: 'Enzym cytochrom P450 1A2 intensywnie rozbija cząsteczki kofeiny na trzy kluczowe metabolity: paraksantynę (zwiększającą rozkład tłuszczu), teobrominę (rozszerzającą naczynia) i teofilinę (rozluźniającą mięśnie gładkie). Mózg powoli orientuje się, że dopływ zewnętrznego stymulanta został odcięty. Blokada receptorów adenozynowych powoli ulega poluzowaniu, a układ nerwowy zaczyna obniżać częstotliwość fałszywych alarmów stresowych.',
-    symptoms: 'Pierwsze subtelne uspokojenie pulsu. Możesz odczuwać delikatny spadek euforycznego "haju" i powolny powrót do realistycznego odczuwania poziomu własnej energii.',
-    tips: 'Zrób 5 głębokich oddechów przeponowych (wdech nosem 4s, wydech ustami 6s). To zasygnalizuje nerwowi błędnemu, że zagrożenie minęło i można wyłączyć tryb "walcz lub uciekaj".',
-    mentalBoost: 'System oczyszczania działa na pełnych obrotach. Pozwalasz swojemu ciału na naturalną, biologiczną detoksykację.'
+    phase: 'Faza 1: Spadek Szczytowego Stężenia',
+    benefit: 'Spadek pulsu i pierwsze uspokojenie',
+    description: 'Najwyższa fala pobudzenia opada. Naczynia wieńcowe powoli wracają do optymalnej elastyczności, a układ krążenia redukuje podwyższone ciśnienie tętnicze.',
+    symptoms: 'Pierwsze subtelne uspokojenie pulsu, spadek euforycznego wyrzutu dopaminy.',
+    tips: 'Wykonaj 5 głębokich oddechów przeponowych, by aktywować przywspółczulny układ nerwowy.',
+    mentalBoost: 'Twoje serce zwalnia bieg i dziękuje Ci za zdjęcie chemicznego bata stymulacji.'
+  },
+  {
+    id: 'm-3h',
+    code: '3H',
+    name: '3 Godziny',
+    seconds: 3 * 3600,
+    phase: 'Faza 1: Uwalnianie Receptorów A1',
+    benefit: 'Poluzowanie blokady receptorów snu',
+    description: 'Cząsteczki kofeiny powoli odłączają się od receptorów adenozynowych A1 w korze mózgowej. Naturalna adenozyna zaczyna docierać do neuronów, ujawniając prawdziwy poziom energii.',
+    symptoms: 'Lekki spadek energii, początek rozluźnienia napiętych mięśni karku i barków.',
+    tips: 'Nie sięgaj po słodkie przekąski – napij się wody z cytryną lub herbaty miętowej.',
+    mentalBoost: 'Prawdziwa biologia powoli przejmuje stery. Odkrywasz autentyczny stan swojego ciała.'
   },
   {
     id: 'm-4h',
     code: '4H',
     name: '4 Godziny',
     seconds: 4 * 3600,
-    phase: 'Faza 1: Uwalnianie Receptorów',
-    benefit: 'Demaskowanie naturalnego zmęczenia',
-    description: 'Uwalnianie receptorów A1 i A2A w korze mózgowej wkracza w decydującą fazę. Kofeina, która do tej pory udawała adenozynę (kluczowy neuroprzekaźnik snu), zsuwa się z receptorów. Teraz skumulowana adenozyna – naturalny biochemiczny wskaźnik zmęczenia – gwałtownie dociera do neuronów. Mózg w końcu otrzymuje prawdziwą, niezakłóconą informację o tym, ile energii faktycznie posiada Twoje ciało.',
-    symptoms: 'Odtajnienie zmęczenia: może pojawić się nagła, wyraźna senność, ziewanie, spadek motywacji oraz automatyczna, nawykowa chęć pójścia po kolejną kawę (tzw. zjazd kofeinowy).',
-    tips: 'Nie daj się oszukać własnemu mózgowi – to tylko nawyk dopaminowy. Zamiast sięgać po kubek, wstań, przeciągnij się, przewietrz pokój lub zrób 3 minuty szybkiego spaceru.',
-    mentalBoost: 'Czujesz zmęczenie? To świetnie! To dowód na to, że Twoja naturalna biologia wreszcie odzyskuje głos. Jesteś silniejszy niż ten chwilowy spadek formy.'
+    phase: 'Faza 1: Demaskowanie Zmęczenia',
+    benefit: 'Prawdziwa informacja o zasobach energii',
+    description: 'Adenozyna gwałtownie łączy się z uwolnionymi receptorami. Mózg otrzymuje niezakłóconą informację o rzeczywistym zmęczeniu biologicznym bez fałszywych sygnałów.',
+    symptoms: 'Wyraźne ziewanie, chęć sięgnięcia po kolejną porcję kofeiny (odruch nawykowy).',
+    tips: 'Wstań, zrób 10 przysiadów lub wyjdź na 3-minutowy spacer na świeże powietrze.',
+    mentalBoost: 'To zmęczenie to nie Twoja słabość – to Twoje neurony odzyskujące wolność i prawdziwy głos.'
   },
   {
     id: 'm-6h',
@@ -218,11 +276,11 @@ const MILESTONES: Milestone[] = [
     name: '6 Godzin',
     seconds: 6 * 3600,
     phase: 'Faza 1: Okres Półtrwania (T½)',
-    benefit: '50% stymulanta bezpowrotnie usunięte',
-    description: 'Osiągasz kluczowy biologiczny kamień milowy: okres półtrwania (half-life) kofeiny. Oznacza to, że wątrobie udało się przefiltrować i zneutralizować dokładnie połowę dawki. Twoje naczynia krwionośne w mózgu, dotychczas nienaturalnie zwężone, zaczynają się rozszerzać, przywracając prawidłowy, swobodny przepływ krwi i tlenu do tkanki nerwowej. Wyrzut kortyzolu (hormonu stresu) wyraźnie zwalnia.',
-    symptoms: 'Brak sztucznego napięcia, możliwe delikatne "mgliste" myślenie (brain fog) lub uczucie ociężałości, zwłaszcza u osób pijących regularnie duże dawki.',
-    tips: 'To idealny moment na nawodnienie i lekką przekąskę bogatą w magnez (np. migdały, gorzka czekolada 90%), co pomoże ustabilizować poziom cukru we krwi.',
-    mentalBoost: 'Półmetek pierwszego starcia za Tobą! Organizm wykonał gigantyczną pracę. Połowa toksyny już nigdy nie wróci do Twojego układu nerwowego.'
+    benefit: '50% kofeiny całkowicie zneutralizowane',
+    description: 'Połowa przyjętej dawki kofeiny została trwale przefiltrowana i wydalona. Naczynia krwionośne w mózgu rozszerzają się, zwiększając dotlenienie kory mózgowej.',
+    symptoms: 'Uczucie ociężałości, możliwy lekki ból głowy związany z rozszerzaniem naczyń.',
+    tips: 'Zjedz garść orzechów lub migdałów bogatych w magnez, by wesprzeć stabilność naczyniową.',
+    mentalBoost: 'Przełomowy punkt! Połowa trucizny opuściła Twój organizm bezpowrotnie.'
   },
   {
     id: 'm-8h',
@@ -230,47 +288,95 @@ const MILESTONES: Milestone[] = [
     name: '8 Godzin',
     seconds: 8 * 3600,
     phase: 'Faza 1: Równowaga Krążenia',
-    benefit: 'Normalizacja układu sercowo-naczyniowego',
-    description: 'Układ współczulny przechodzi z trybu ciągłego alertu w stan spoczynku. Ciśnienie tętnicze krwi stabilizuje się, a tętno spoczynkowe obniża się do naturalnego, bezpiecznego dla serca poziomu. Nadnercza przestają być stymulowane do ciągłej, wyczerpującej produkcji adrenaliny. Dbasz właśnie o żywotność i zdrowie swojego mięśnia sercowego, zdejmując z niego niewidzialny ciężar.',
-    symptoms: 'Wyraźne poczucie fizycznego odprężenia mięśni (szczególnie karku, barków i żuchwy), głębszy i wolniejszy oddech, czasem umiarkowany ból głowy związany z rozszerzaniem naczyń.',
-    tips: 'Jeśli odczuwasz napięciowy ból głowy, unikaj tabletek z kofeiną. Wypij ciepły napar z melisy lub rumianku i wykonaj masaż skroni.',
-    mentalBoost: 'Twoje serce bije teraz swoim własnym, miarowym rytmem, bez żadnego chemicznego poganiania. To brzmienie prawdziwego zdrowia.'
+    benefit: 'Normalizacja ciśnienia i ulga dla nadnerczy',
+    description: 'Układ współczulny przechodzi w stan spoczynku. Nadnercza przestają produkować nadmiarowy kortyzol pod dyktando stymulanta, a tętno spoczynkowe osiąga wzorcowy poziom.',
+    symptoms: 'Głęboki spokój mięśniowy, odprężenie żuchwy, wolniejszy i głębszy oddech.',
+    tips: 'Jeśli odczuwasz napięcie, zastosuj ciepły prysznic lub delikatny masaż skroni.',
+    mentalBoost: 'Twoje serce bije spokojnym, naturalnym rytmem. Dajesz mu bezcenny odpoczynek.'
+  },
+  {
+    id: 'm-10h',
+    code: '10H',
+    name: '10 Godzin',
+    seconds: 10 * 3600,
+    phase: 'Faza 2: Głębokie Oczyszczanie',
+    benefit: '75% kofeiny zneutralizowane z tkanek',
+    description: 'Trzy czwarte substancji zostało całkowicie usunięte. Narządy wewnętrzne odzyskują pełną równowagę elektrolitową, a w naczyniach krwionośnych płynie czystsza krew.',
+    symptoms: 'Naturalne wyciszenie układu nerwowego, spadek nerwowości i natłoku myśli.',
+    tips: 'Zadbaj o lekką kolację bez cukrów prostych, by przygotować ciało do snu.',
+    mentalBoost: 'Jesteś o krok od pełnego, biologicznego oczyszczenia krwi. Wytrwałość przynosi owoce.'
   },
   {
     id: 'm-12h',
     code: '12H',
     name: '12 Godzin',
     seconds: 12 * 3600,
-    phase: 'Faza 2: Głębokie Oczyszczanie',
-    benefit: 'Uwolnienie szyszynki i start produkcji melatoniny',
-    description: 'Poziom kofeiny w Twojej krwi spadł do ułamkowych, śladowych wartości (ok. 25% dawki początkowej). Mózgowy ośrodek snu – szyszynka – może wreszcie bez przeszkód i opóźnień wydzielać melatoninę. Ten kluczowy hormon nie tylko reguluje rytm dobowy, ale też jest potężnym antyoksydantem naprawiającym DNA podczas snu. Kofeina już nie blokuje jego produkcji.',
-    symptoms: 'Naturalna, głęboka senność wieczorna, wolna od sztucznego niepokoju i gonitwy myśli (racing thoughts), która często towarzyszy zasypianiu po kawie.',
-    tips: 'Przygotuj się na doskonały sen. Zredukuj światło niebieskie, wywietrz sypialnię i zrezygnuj z wpatrywania się w ekrany na godzinę przed snem.',
-    mentalBoost: 'Dziś w nocy Twój mózg doświadczy pierwszego od bardzo dawna nieskażonego, głęboko regenerującego snu. Rano obudzisz się silniejszy.'
+    phase: 'Faza 2: Start Syntezy Melatoniny',
+    benefit: 'Uwolnienie szyszynki i głęboki sen',
+    description: 'Śladowe ilości kofeiny przestają blokować szyszynkę. Mózg bez zakłóceń wydziela melatoninę – kluczowy hormon snu i silny antyoksydant naprawiający komórki.',
+    symptoms: 'Głęboka, zdrowa senność wieczorna bez niepokoju i gonitwy myśli.',
+    tips: 'Zredukuj światło niebieskie (ekrany), wywietrz sypialnię i przygotuj się na regenerujący sen.',
+    mentalBoost: 'Dziś w nocy Twój mózg doświadczy czystego, prawdziwie regenerującego snu!'
+  },
+  {
+    id: 'm-18h',
+    code: '18H',
+    name: '18 Godzin',
+    seconds: 18 * 3600,
+    phase: 'Faza 2: Regeneracja Naczyniowa Mózgu',
+    benefit: 'Pełny powrót przepływu mózgowego',
+    description: 'Naczynia krwionośne w mózgu rozszerzyły się do naturalnej średnicy. Tlen i glukoza swobodnie docierają do wszystkich obszarów kory mózgowej.',
+    symptoms: 'Możliwe napięcie naczyniowe (ból głowy związany z odstawieniem), które jest dowodem gojenia.',
+    tips: 'Pij dużo wody mineralnej z odrobiną soli kłodawskiej lub cytryny dla optymalnego nawodnienia.',
+    mentalBoost: 'Ból głowy to nie wróg – to namacalny dowód, że naczynia mózgowe odzyskują naturalne ukrwienie.'
   },
   {
     id: 'm-24h',
     code: '24H',
     name: '1 Doba',
     seconds: 24 * 3600,
-    phase: 'Faza 2: Szczyt Odstawienia',
-    benefit: '100% kofeiny wyeliminowane z organizmu',
-    description: 'To historyczny moment. Po 24 godzinach stężenie kofeiny w Twoim ciele wynosi absolutne ZERO. Organizm jest całkowicie wolny od stymulanta, ale układ nerwowy musi teraz na nowo nauczyć się funkcjonować bez "chemicznych kul". Receptory w mózgu, dotąd otępiane regularnymi dawkami, wykazują ekstremalną nadwrażliwość na adenozynę. Rozpoczyna się proces neuroadaptacji.',
-    symptoms: 'Możesz odczuwać apogeum objawów odstawiennych: pulsujące bóle głowy (spowodowane drastycznym rozszerzeniem naczyń krwionośnych w mózgu), drażliwość, wahania nastroju, sztywność mięśni i silną chęć (craving) wypicia kawy.',
-    tips: 'Pij ogromne ilości wody, stosuj zimne okłady na kark i daj sobie absolutne prawo do odpoczynku. Jeśli możesz, utnij sobie 20-minutową drzemkę.',
-    mentalBoost: 'Przetrwałeś najtrudniejsze 24 godziny! Ból głowy, który czujesz, to fizyczny dowód na to, że Twój mózg właśnie się leczy i przebudowuje swoje struktury.'
+    phase: 'Faza 2: Szczyt Odstawienia & 100% Czystości',
+    benefit: '100% kofeiny wyeliminowane z krwioobiegu',
+    description: 'Po 24 godzinach stężenie kofeiny w Twojej krwi wynosi absolutne ZERO. Organizm jest wolny chemicznie. Rozpoczyna się fascynujący proces neuroadaptacji.',
+    symptoms: 'Kulminacja objawów odstawiennych: pulsujące bóle głowy, drażliwość, zmęczenie.',
+    tips: 'Zastosuj zimny okład na czoło i kark, utnij 20-minutową drzemkę i daj sobie prawo do spokoju.',
+    mentalBoost: 'Przetrwałeś najtrudniejszą dobę! W Twoich żyłach nie ma już ani jednej cząsteczki kofeiny.'
+  },
+  {
+    id: 'm-36h',
+    code: '36H',
+    name: '36 Godzin',
+    seconds: 36 * 3600,
+    phase: 'Faza 3: Przełom Neuroadaptacji',
+    benefit: 'Spadek intensywności bólu naczyniowego',
+    description: 'Szczytowa fala rozszerzania naczyń mózgowych powoli stabilizuje się. Mózg rozpoczyna reorganizację przekaźnictwa nerwowego bez zewnętrznego stymulanta.',
+    symptoms: 'Bóle głowy zaczynają wyraźnie tracić na sile, pojawia się głęboki, stabilniejszy oddech.',
+    tips: 'Spacer na świeżym powietrzu przyspieszy wymianę gazową i dotlenienie komórek nerwowych.',
+    mentalBoost: 'Najostrzejsza fizyczna burza powoli mija. Z każdą godziną Twoje ciało zyskuje przewagę.'
   },
   {
     id: 'm-48h',
     code: '48H',
     name: '2 Doby',
     seconds: 48 * 3600,
-    phase: 'Faza 3: Przebudowa Receptorów',
+    phase: 'Faza 3: Przebudowa Receptorów (Down-regulation)',
     benefit: 'Inicjacja neuroplastyczności mózgu',
-    description: 'Rozpoczyna się fascynujący biologiczny proces: "down-regulation". Ponieważ nie dostarczasz kofeiny, mózg zauważa, że posiada zbyt dużą ilość receptorów adenozynowych (wytworzonych wcześniej w ramach obrony przed kofeiną). Organizmu używa neuroplastyczności, by dosłownie zdemontować nadmiar tych receptorów. Twoja chemia mózgu wraca do fabrycznych ustawień.',
-    symptoms: 'Utrzymujące się ogólne osłabienie i spadek nastroju z powodu chwilowego niedoboru dopaminy. Ból głowy zazwyczaj zaczyna tracić na intensywności.',
-    tips: 'Aktywność fizyczna to Twój największy sprzymierzeniec. Nawet 15 minut lekkiego truchtu lub jogi wyzwoli endorfiny i naturalnie podniesie poziom dopaminy.',
-    mentalBoost: 'Twój mózg przeprowadza teraz zaawansowaną reinżynierię własnej budowy. Jesteś w połowie drogi przez najtrudniejszy fizyczny etap odstawienia.'
+    description: 'Mózg zauważa brak stymulanta i zaczyna demontować nadmiarowe receptory adenozynowe, które stworzył w obronie przed kofeiną. Chemia neuronów wraca do normy.',
+    symptoms: 'Przejściowy spadek nastroju z powodu braku sztucznej dopaminy, wygasanie bólu głowy.',
+    tips: 'Lekka aktywność fizyczna (joga, spacer) pobudzi naturalną produkcję endorfin i dopaminy.',
+    mentalBoost: 'Twój mózg przeprowadza zaawansowaną reinżynierię biologiczną. Budujesz nową siłę!'
+  },
+  {
+    id: 'm-60h',
+    code: '60H',
+    name: '60 Godzin',
+    seconds: 60 * 3600,
+    phase: 'Faza 3: Nawodnienie & Równowaga Tkanek',
+    benefit: 'Odzyskiwanie głębokiego nawilżenia komórkowego',
+    description: 'Diuretyczne działanie kofeiny zostało całkowicie zneutralizowane. Nerki i komórki ciała zatrzymują optymalną ilość wody i minerałów (magnez, potas, cynk).',
+    symptoms: 'Poprawa elastyczności skóry, brak uczucia suchości w ustach i oczach.',
+    tips: 'Sięgnij po wodę kokosową lub sok pomidorowy dla uzupełnienia potasu.',
+    mentalBoost: 'Twoje ciało nawadnia się od środka. Komórki pracują w idealnym środowisku biologicznym.'
   },
   {
     id: 'm-3d',
@@ -279,73 +385,168 @@ const MILESTONES: Milestone[] = [
     seconds: 3 * 24 * 3600,
     phase: 'Faza 3: Fizyczna Wolność',
     benefit: 'Ustabilizowanie przepływu krwi w mózgu',
-    description: 'Po 72 godzinach odstawienia przepływ krwi i tlenu w naczyniach mózgowych wraca do normy. Najgorsze, ostre fizyczne objawy odstawienia (jak silne migreny czy mdłości) przeważnie ustępują. Twój układ nagrody (szlak mezolimbiczny) zaczyna powoli przypominać sobie, jak czerpać satysfakcję i dopaminę z naturalnych bodźców, a nie z farmakologicznego wymuszenia.',
-    symptoms: 'Wygasanie bólu głowy. Zamiast fizycznego dyskomfortu może pojawić się pustka psychologiczna lub brak poczucia "porannego rytuału".',
-    tips: 'Zastąp nawyk. Zamiast kawy, przygotuj rano yerba mate (jeśli schodzisz stopniowo), matchę, bezkofeinową kawę zbożową lub po prostu ciepłą wodę z cytryną i imbirem.',
-    mentalBoost: 'Gratulacje! Najgorszy fizyczny ból jest już za Tobą. Pokonałeś chemiczne uzależnienie. Teraz zaczyna się praca nad nawykami i psychologią.'
+    description: 'Po 72 godzinach przepływ krwi i tlenu w naczyniach mózgowych wraca do trwałej normy. Ostre fizyczne objawy odstawienia niemal całkowicie ustępują.',
+    symptoms: 'Wygaszenie bólu głowy, pojawienie się psychologicznej pustki po dawnym rytuale kawowym.',
+    tips: 'Zastąp nawyk: przygotuj rano napar imbirowy, kawę zbożową lub ciepłą wodę z cytryną.',
+    mentalBoost: 'Fizyczny głód pokonany! Najtrudniejszy etap odstawienia masz już za sobą.'
+  },
+  {
+    id: 'm-4d',
+    code: '4D',
+    name: '4 Doby',
+    seconds: 4 * 24 * 3600,
+    phase: 'Faza 4: Odnowa Żołądka & Mikrobiomu',
+    benefit: 'Regeneracja błony śluzowej przewodu pokarmowego',
+    description: 'Brak drażniących kwasów kawowych i sztucznego wyrzutu kwasu solnego pozwala na szybką odbudowę nabłonka żołądka oraz wzmocnienie flory bakteryjnej jelit.',
+    symptoms: 'Zanik zgagi, refluksu, brak porannych skurczów żołądka, lepsze trawienie posiłków.',
+    tips: 'Włącz do diety produkty fermentowane (kefir, kiszonki), by wesprzeć odbudowę mikrobiomu.',
+    mentalBoost: 'Twój układ trawienny odzyskuje spokój. Zdrowe jelita to lepszy nastrój i odporność!'
   },
   {
     id: 'm-5d',
     code: '5D',
     name: '5 Dni',
     seconds: 5 * 24 * 3600,
-    phase: 'Faza 4: Powrót Naturalnej Energii',
-    benefit: 'Głęboka regeneracja nadnerczy',
-    description: 'Twoje nadnercza, które przez lata były zmuszane do nieustannego wypluwania kortyzolu i adrenaliny pod dyktando kofeiny, w końcu przechodzą w fazę głębokiej regeneracji. Zauważasz, że Twoja krzywa energetyczna w ciągu dnia staje się znacznie bardziej płaska i stabilna. Unikasz drastycznych popołudniowych spadków mocy (afternoon crash). Budzisz się z bardziej autentycznym poziomem energii.',
-    symptoms: 'Pojawiają się pierwsze momenty spontanicznej, czystej energii, niezależnej od stymulantów. Sen staje się wyczuwalnie głębszy i bardziej zwarty.',
-    tips: 'Zwróć uwagę na to, jak czujesz się około godziny 14:00-15:00. Zauważ, że dawny, obezwładniający zjazd energetyczny zniknął lub znacznie zelżał.',
-    mentalBoost: 'Odkrywasz swoją prawdziwą, rzetelną energię bazową. Nie potrzebujesz już pożyczać energii z przyszłości z lichwiarskim procentem.'
+    phase: 'Faza 4: Regeneracja Nadnerczy',
+    benefit: 'Koniec zjazdów energetycznych po południu',
+    description: 'Nadnercza regenerują swoje zasoby. Krzywa kortyzolu w ciągu dnia ulega wygładzeniu. Popołudniowy, obezwładniający zjazd energetyczny (afternoon crash) znika.',
+    symptoms: 'Stabilna energia od rana do wieczora, zanik nagłych napadów senności o 14:00.',
+    tips: 'Zauważ, jak równomiernie pracuje Twój umysł bez konieczności ciągłego "doładowywania".',
+    mentalBoost: 'Odkrywasz prawdziwą, stabilną energię. Nie pożyczasz już energii na procent z przyszłości!'
+  },
+  {
+    id: 'm-6d',
+    code: '6D',
+    name: '6 Dni',
+    seconds: 6 * 24 * 3600,
+    phase: 'Faza 4: Przebudzenie Naturalnej Witalności',
+    benefit: 'Wzrost klarowności umysłu i koncentracji',
+    description: 'Neuroprzekaźniki (GABA, glutaminian, serotonina) odzyskują harmonijną równowagę. Znika mgła mózgowa (brain fog), a koncentracja staje się głęboka i stabilna.',
+    symptoms: 'Poczucie lekkości, łatwiejsze wchodzenie w stan skupienia przy pracy umysłowej.',
+    tips: 'Zaplanuj wymagające zadanie intelektualne i zobacz, jak płynnie pracuje Twój umysł.',
+    mentalBoost: 'Jesteś o krok od zamknięcia pierwszego pełnego tygodnia absolutnej wolności!'
   },
   {
     id: 'm-1w',
     code: '1W',
     name: '1 Tydzień',
     seconds: 7 * 24 * 3600,
-    phase: 'Faza 4: Reset Snu (REM & Deep Sleep)',
-    benefit: 'Drastyczna poprawa architektury snu',
-    description: 'To przełomowy tydzień. Analizy EEG osób po odstawieniu kofeiny wykazują w tym czasie znaczący wzrost udziału fazy snu głębokiego (Slow-Wave Sleep) w całkowitym czasie spoczynku. To właśnie w tej fazie dochodzi do odnowy komórkowej, wzmacniania układu odpornościowego i konsolidacji pamięci. Twój rytm okołodobowy (circadian rhythm) został niemal całkowicie zresetowany.',
-    symptoms: 'Lepsze samopoczucie rano, rzadsze wybudzenia w nocy, zwiększona klarowność umysłu (brak tzw. brain fog) oraz stabilniejszy nastrój w ciągu dnia.',
-    tips: 'To świetny czas, by zoptymalizować swoją poranną rutynę. Wykorzystaj świeżość umysłu na medytację, czytanie lub poranny trening zamiast bezmyślnego parzenia kawy.',
-    mentalBoost: 'Jesteś wolny od tygodnia. Udowodniłeś sobie, że jesteś w stanie przełamać jeden z najsilniejszych kulturowych i chemicznych nawyków świata.'
+    phase: 'Faza 4: Reset Architektury Snu (NREM / REM)',
+    benefit: 'Drastyczny wzrost fazy snu głębokiego',
+    description: 'Znaczący wzrost udziału snu głębokiego (Slow-Wave Sleep) w nocy. Następuje intensywna odnowa komórkowa mózgu, wzmocnienie odporności i pełna konsolidacja pamięci.',
+    symptoms: 'Świeżość po przebudzeniu bez potrzeby budzika, stabilny nastrój przez cały dzień.',
+    tips: 'Wykorzystaj poranną świeżość na medytację, czytanie lub poranny rozruch fizyczny.',
+    mentalBoost: 'Cały tydzień wolności! Przełamałeś jeden z najsilniejszych nawyków współczesnego świata.'
+  },
+  {
+    id: 'm-10d',
+    code: '10D',
+    name: '10 Dni',
+    seconds: 10 * 24 * 3600,
+    phase: 'Faza 5: Spadek Stanów Lękowych',
+    benefit: 'Głęboki spokój układu nerwowego',
+    description: 'Brak ciągłej stymulacji receptorów noradrenergicznych powoduje wyraźny spadek ogólnego poziomu napięcia, natłoku myśli i mikrostresów w codziennych sytuacjach.',
+    symptoms: 'Zmniejszona reaktywność na stresory w pracy, opanowanie, niższe tętno spoczynkowe.',
+    tips: 'Zauważ, o ile spokojniej reagujesz na trudne sytuacje i niespodziewane wyzwania.',
+    mentalBoost: 'Spokój, którego szukałeś latami, był blokowany przez niewinną filiżankę kawy.'
   },
   {
     id: 'm-2w',
     code: '2W',
     name: '2 Tygodnie',
     seconds: 14 * 24 * 3600,
-    phase: 'Faza 5: Stabilizacja Nastroju',
-    benefit: 'Homeostaza dopaminowa i uwrażliwienie receptorów',
-    description: 'Po 14 dniach układ nagrody w mózgu wraca do pełnej, naturalnej wrażliwości. Receptory dopaminowe (D2), które mogły być przytępione przez chroniczne spożycie stymulantów, odzyskują swoją pierwotną gęstość. Oznacza to, że zaczynasz czerpać znacznie więcej radości z małych, codziennych rzeczy. Zmniejszają się też stany lękowe, nerwowość i natłok myśli (overthinking), które kofeina potajemnie napędzała.',
-    symptoms: 'Znaczący spadek ogólnego poziomu niepokoju (anxiety), wyższa odporność na stresujące sytuacje w pracy, głęboki, nieprzerwany sen i stabilna produktywność.',
-    tips: 'Nagródź się za ten ogromny sukces. Zafunduj sobie wyjście do sauny, dobrą kolację lub nową książkę – Twój mózg jest gotowy przyjąć czystą, zdrową dopaminę z tych źródeł.',
-    mentalBoost: 'To jest właśnie ten spokój umysłu, którego być może szukałeś latami w innych miejscach, a który był blokowany przez niewinny, codzienny napój.'
+    phase: 'Faza 5: Homeostaza Dopaminowa',
+    benefit: 'Uwrażliwienie receptorów dopaminy D2',
+    description: 'Układ nagrody odzyskuje pełną, naturalną wrażliwość. Zaczynasz odczuwać autentyczną satysfakcję i motywację ze zwykłych, codziennych czynności.',
+    symptoms: 'Radość z drobnych osiągnięć, głęboki sen, wysoka odporność psychiczna.',
+    tips: 'Nagródź się za ten sukces – wyjście do kina, dobra kolacja lub wycieczka w naturę.',
+    mentalBoost: '14 dni czystości! Twój mózg znowu potrafi cieszyć się życiem w sposób w 100% naturalny.'
   },
   {
     id: 'm-3w',
     code: '3W',
     name: '3 Tygodnie',
     seconds: 21 * 24 * 3600,
-    phase: 'Faza 5: Przebudowa Nawyków',
+    phase: 'Faza 5: Trwały Nowy Nawyk',
     benefit: 'Ugruntowanie nowych ścieżek neuronalnych',
-    description: 'Neurobiolodzy twierdzą, że potrzeba około 21 dni, aby nowy wzorzec zachowania zaczął formować trwałe ścieżki neuronalne (choć pełny proces zajmuje dłużej). Poranny rytuał bez kawy nie wydaje się już dziwny czy brakujący. Twój układ pokarmowy (mikrobiom jelitowy) i żołądek również dziękują Ci za brak zakwaszającego i drażniącego uderzenia z samego rana. Przyswajanie minerałów (wapń, żelazo, magnez) znacząco wzrosło.',
-    symptoms: 'Brak jakiejkolwiek fizycznej chęci na kofeinę. Zwiększona jasność umysłu utrzymująca się równo przez cały dzień roboczy.',
-    tips: 'Bądź czujny w sytuacjach wyjątkowo stresujących lub przy dużej ilości pracy – to jedyne momenty, gdy stary nawyk psychologiczny może jeszcze cicho zapukać.',
-    mentalBoost: 'Stałeś się mistrzem własnej fizjologii. Trzy tygodnie pełnej wolności zbudowały potężny fundament pod zmianę całego stylu życia.'
+    description: 'Po 21 dniach mózg utrwala nowe automatyzmy. Poranna rutyna bez kawy jest naturalna i komfortowa. Zwiększyło się przyswajanie żelaza, wapnia i magnezu.',
+    symptoms: 'Całkowity brak pociągu do kofeiny, doskonała kondycja cery, stabilna witalność.',
+    tips: 'Bądź czujny w wyjątkowo stresujących momentach – to jedyne sytuacje, gdy dawny nawyk może zapukać.',
+    mentalBoost: 'Trzy tygodnie! Stałeś się panem własnej biochemii i zbudowałeś żelazny nawyk.'
   },
   {
     id: 'm-1m',
     code: '1M',
     name: '1 Miesiąc',
     seconds: 30 * 24 * 3600,
-    phase: 'Faza 6: Kompletna Zmiana Paradygmatu',
-    benefit: 'Całkowity reset metaboliczny i psychologiczny',
-    description: '30 dni wolności. Jesteś na poziomie osiągalnym dla zaledwie ułamka promila społeczeństwa żyjącego w kulturze napędzanej kofeiną. Osiągnąłeś pełen reset: Twoja kora przedczołowa pracuje płynnie, bez wymuszonych zrywów. Układ limbiczny jest spokojny, a nadnercza w pełni zregenerowane. Twoje ciało wie już doskonale, jak samodzielnie wytwarzać energię ATP bez pomocy oszusta z zewnątrz. Stałeś się osobą naturalnie energiczną.',
-    symptoms: 'Doskonała jakość snu, budzenie się z naturalną energią bez budzika, głęboki spokój wewnętrzny, znacząca redukcja stanów zapalnych w organizmie, zauważalnie lepsza kondycja cery (dzięki optymalnemu nawodnieniu i lepszemu snowi).',
-    tips: 'Jesteś inspiracją. Podziel się swoim doświadczeniem z innymi, ale pamiętaj – nie obniżaj gardy, jedno "wyjątkowe" espresso może ponownie obudzić dawne ścieżki nałogu.',
-    mentalBoost: 'To jest absolutne zwycięstwo. Wygrałeś wolność, żelazne zdrowie i niezachwiany, krystaliczny spokój umysłu. Ciesz się swoim nowym, niesamowitym życiem!'
+    phase: 'Faza 6: Pełny Reset Metaboliczny',
+    benefit: 'Całkowity reset metaboliczny i fizjologiczny',
+    description: '30 dni pełnej wolności. Osiągnąłeś stan, w którym Twoje ciało perfekcyjnie samodzielnie syntetyzuje energię ATP. Kora przedczołowa pracuje w rytmie pełnej jasności.',
+    symptoms: 'Naturalne budzenie się z energią, głęboki spokój wewnętrzny, zero stanów lękowych.',
+    tips: 'Podziel się swoim sukcesem z innymi – jesteś inspiracją i żywym dowodem, że można żyć bez kofeiny.',
+    mentalBoost: 'Miesiąc wolności! Wygrałeś zdrowie, odporność i krystaliczny spokój umysłu.'
+  },
+  {
+    id: 'm-45d',
+    code: '45D',
+    name: '45 Dni',
+    seconds: 45 * 24 * 3600,
+    phase: 'Faza 6: Równowaga Kortyzolowa',
+    benefit: 'Optymalny rytm dobowy i świeżość o poranku',
+    description: 'Naturalna krzywa kortyzolu osiąga modelowy przebieg. Poziom energii w ciągu dnia jest w 100% zsynchronizowany z naturalnym światłem słonecznym.',
+    symptoms: 'Natychmiastowa gotowość do działania po wstaniu z łóżka, brak ospałości porannej.',
+    tips: 'Utrzymuj stałe pory snu i wstawania, by wzmocnić ten doskonały stan biologiczny.',
+    mentalBoost: 'Półtora miesiąca niezłomności. Twoje ciało funkcjonuje jak szwajcarski zegarek!'
+  },
+  {
+    id: 'm-2m',
+    code: '2M',
+    name: '2 Miesiące',
+    seconds: 60 * 24 * 3600,
+    phase: 'Faza 7: Nowa Tożsamość Wolności',
+    benefit: 'Trwała transformacja stylu życia',
+    description: 'Nie jesteś już osobą, która "odstawia kofeinę" – jesteś osobą, która jest naturalnie wolna. Dawne skojarzenia społeczne i nawykowe przestały mieć jakąkolwiek moc.',
+    symptoms: 'Wysoka stabilność emocjonalna, głęboka regeneracja serca, żołądka i układu nerwowego.',
+    tips: 'Pielęgnuj swoje nowe nawyki i ciesz się stabilną energią każdego pojedynczego dnia.',
+    mentalBoost: '60 dni bez kofeiny! Zbudowałeś nową tożsamość człowieka w pełni niezależnego.'
+  },
+  {
+    id: 'm-3m',
+    code: '3M',
+    name: '3 Miesiące',
+    seconds: 90 * 24 * 3600,
+    phase: 'Faza 7: Mistrzostwo Biochemii Mózgu',
+    benefit: 'Kompletna neuroplastyczna stabilizacja',
+    description: 'Pełny kwartał wolności. Gęstość receptorów w mózgu i wrażliwość układu nagrody osiągnęły stan sprzed jakiegokolwiek kontaktu z nałogiem. Absolutne mistrzostwo.',
+    symptoms: 'Krystaliczna jasność myśli, optymalne ciśnienie krwi, doskonała jakość snu i regeneracji.',
+    tips: 'Świętuj ten niezwykły kamień milowy z bliskimi. Twój sukces jest trwały i głęboki.',
+    mentalBoost: 'Trzy miesiące! Należysz do elity osób, które odzyskały 100% kontroli nad własnym życiem.'
+  },
+  {
+    id: 'm-6m',
+    code: '6M',
+    name: 'Pół Roku',
+    seconds: 180 * 24 * 3600,
+    phase: 'Faza 8: Żelazna Odporność & Wolność',
+    benefit: 'Pół roku całkowitej niezależności',
+    description: 'Pół roku życia w pełnej homeostazie. Twoje serce, układ trawienny, nadnercza i mózg funkcjonują w optymalnym zdrowiu bez żadnych sztucznych stymulantów.',
+    symptoms: 'Wybitna odporność na stres, zrównoważony poziom energii w każdej porze roku.',
+    tips: 'Zapisz swoje przemyślenia z tych 6 miesięcy jako drogowskaz na całe przyszłe życie.',
+    mentalBoost: 'Pół roku wolności! Jesteś niezłomnym wzorem dyscypliny i troski o własne zdrowie.'
+  },
+  {
+    id: 'm-1y',
+    code: '1Y',
+    name: '1 Rok',
+    seconds: 365 * 24 * 3600,
+    phase: 'Faza 8: Złoty Laur Całkowitej Wolności',
+    benefit: 'Roczny cykl życia w absolutnej czystości',
+    description: 'Pełny rok – 365 dni życia w autentycznej energii. Przetrwałeś każdą porę roku, każdy stresujący projekt i każdą okazję towarzyską bez sięgania po chemiczne wsparcie.',
+    symptoms: 'Niezrównany spokój, optymalne zdrowie układu krążenia, perfekcyjna jakość snu.',
+    tips: 'Jesteś żywą legendą wolności od stymulantów. Bądź dumny ze swojej niezwykłej drogi.',
+    mentalBoost: '365 dni absolutnej wolności! Osiągnąłeś szczyt – to Twoje największe zwycięstwo!'
   }
 ];
-
 
 // --- Helpers ---
 function formatDuration(ms: number) {
@@ -357,6 +558,53 @@ function formatDuration(ms: number) {
   if (d > 0) return `${d}d ${h}h ${m}m`;
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m ${diffSec % 60}s`;
+}
+
+function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number, lastIntake: number) {
+  const isUnlocked = diffSeconds >= milestoneSeconds;
+  if (isUnlocked) {
+    return {
+      isUnlocked: true,
+      badgeText: 'Zdobyte! ✓',
+      timeRemainingStr: 'Zdobyte!',
+      targetDateStr: 'Etap zrealizowany',
+      progressPercent: 100,
+      remainingSec: 0,
+    };
+  }
+
+  const remainingSec = Math.max(0, milestoneSeconds - diffSeconds);
+  const targetDate = new Date(lastIntake + milestoneSeconds * 1000);
+  const targetDateStr = format(targetDate, 'd MMMM yyyy, HH:mm', { locale: pl });
+  
+  const d = Math.floor(remainingSec / (3600 * 24));
+  const h = Math.floor((remainingSec % (3600 * 24)) / 3600);
+  const m = Math.floor((remainingSec % 3600) / 60);
+
+  let badgeText = '';
+  let timeRemainingStr = '';
+
+  if (d > 0) {
+    badgeText = `za ${d}d ${h > 0 ? `${h}h` : ''}`;
+    timeRemainingStr = `${d} ${d === 1 ? 'dzień' : (d >= 2 && d <= 4) ? 'dni' : 'dni'}${h > 0 ? ` i ${h} godz.` : ''}`;
+  } else if (h > 0) {
+    badgeText = `za ${h}h ${m > 0 ? `${m}m` : ''}`;
+    timeRemainingStr = `${h} ${h === 1 ? 'godzinę' : (h >= 2 && h <= 4) ? 'godziny' : 'godzin'}${m > 0 ? ` ${m} min` : ''}`;
+  } else {
+    badgeText = `za ${Math.max(1, m)} min`;
+    timeRemainingStr = `${Math.max(1, m)} min`;
+  }
+
+  const progressPercent = Math.min(99, Math.max(0, Math.floor((diffSeconds / milestoneSeconds) * 100)));
+
+  return {
+    isUnlocked: false,
+    badgeText,
+    timeRemainingStr,
+    targetDateStr,
+    progressPercent,
+    remainingSec,
+  };
 }
 
 function calculateLongestStreak(logs: DrinkLog[], currentLastIntake: number, now: number) {
@@ -399,12 +647,66 @@ export default function Page() {
   const [showQuickFillModal, setShowQuickFillModal] = useState<boolean>(false);
   const [quickFillSortOrder, setQuickFillSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState<boolean>(true);
+  const [isRingCardsCollapsed, setIsRingCardsCollapsed] = useState<boolean>(true);
+  const [isTimePatternsCollapsed, setIsTimePatternsCollapsed] = useState<boolean>(true);
+  const [showMilestoneCard, setShowMilestoneCard] = useState<boolean>(true);
   const quickFillScrollRef = useRef<HTMLDivElement>(null);
+
+  // Settings Collapsible Accordions State
+  const [openSettingsSections, setOpenSettingsSections] = useState<Record<string, boolean>>({
+    theme: true,
+    accent: false,
+    milestone: false,
+    notifications: false,
+    pwa: false,
+    statsStart: false,
+    danger: false,
+  });
+
+  const toggleSettingsSection = (key: string) => {
+    setOpenSettingsSections(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const expandAllSettings = () => {
+    setOpenSettingsSections({
+      theme: true,
+      accent: true,
+      milestone: true,
+      notifications: true,
+      pwa: true,
+      statsStart: true,
+      danger: true,
+    });
+  };
+
+  const collapseAllSettings = () => {
+    setOpenSettingsSections({
+      theme: false,
+      accent: false,
+      milestone: false,
+      notifications: false,
+      pwa: false,
+      statsStart: false,
+      danger: false,
+    });
+  };
 
   // Modals & Sheets
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
-  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+
+  // Stats Start Date & Reset State
+  const [statsStartDate, setStatsStartDate] = useState<number>(Date.now() - 38 * 3600 * 1000);
+  const [showStartDateModal, setShowStartDateModal] = useState<boolean>(false);
+  const [customStartInputDate, setCustomStartInputDate] = useState<string>('');
+  const [customStartInputHour, setCustomStartInputHour] = useState<string>('00:00');
+
+  // Reset & Clear Data Modal State
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState<boolean>(false);
+  const [resetModalType, setResetModalType] = useState<'factory' | 'logs' | 'timer' | null>(null);
 
   // Notification State
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
@@ -489,7 +791,8 @@ export default function Page() {
     showAddModal,
     selectedMilestone,
     showInstallGuideModal,
-    showExitConfirmModal,
+    showStartDateModal,
+    showResetConfirmModal,
   });
 
   useEffect(() => {
@@ -498,13 +801,15 @@ export default function Page() {
       showAddModal,
       selectedMilestone,
       showInstallGuideModal,
-      showExitConfirmModal,
+      showStartDateModal,
+      showResetConfirmModal,
     };
-  }, [view, showAddModal, selectedMilestone, showInstallGuideModal, showExitConfirmModal]);
+  }, [view, showAddModal, selectedMilestone, showInstallGuideModal, showStartDateModal, showResetConfirmModal]);
 
   useEffect(() => {
     const savedLogs = localStorage.getItem('zerocaff_logs') || localStorage.getItem('caffeine_logs');
     const savedIntake = localStorage.getItem('zerocaff_last_intake') || localStorage.getItem('caffeine_last_intake');
+    const savedStatsStart = localStorage.getItem('zerocaff_stats_start_date');
     const savedTheme = localStorage.getItem('zerocaff_theme') as ThemeMode | null;
     const savedAccent = localStorage.getItem('zerocaff_accent') as AccentColorKey | null;
     const savedNotifPref = localStorage.getItem('zerocaff_notif_enabled');
@@ -523,6 +828,16 @@ export default function Page() {
       localStorage.setItem('zerocaff_last_intake', initialIntake.toString());
     }
 
+    if (savedStatsStart) {
+      setStatsStartDate(parseInt(savedStatsStart, 10));
+    } else if (savedIntake) {
+      setStatsStartDate(parseInt(savedIntake, 10));
+    } else {
+      const initialStart = Date.now() - 38 * 3600 * 1000;
+      setStatsStartDate(initialStart);
+      localStorage.setItem('zerocaff_stats_start_date', initialStart.toString());
+    }
+
     if (savedTheme && (savedTheme === 'dark' || savedTheme === 'gray' || savedTheme === 'light')) {
       setTheme(savedTheme);
     }
@@ -535,6 +850,10 @@ export default function Page() {
     }
     if (savedNotifPref !== null) {
       setNotificationsEnabled(savedNotifPref === 'true');
+    }
+    const savedShowMilestone = localStorage.getItem('zerocaff_show_milestone_card');
+    if (savedShowMilestone !== null) {
+      setShowMilestoneCard(savedShowMilestone === 'true');
     }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -699,46 +1018,50 @@ export default function Page() {
       });
     }
 
-    // Hardware / System Back Button & Gesture Navigation (Android / PWA popstate)
-    window.history.replaceState({ screen: 'home' }, '');
-
     const handlePopState = () => {
       const state = navStateRef.current;
 
-      // 1. If Exit Confirm Modal is open -> close it
-      if (state.showExitConfirmModal) {
-        setShowExitConfirmModal(false);
-        return;
-      }
-
-      // 2. If Install Guide Modal is open -> close it
-      if (state.showInstallGuideModal) {
-        setShowInstallGuideModal(false);
-        return;
-      }
-
-      // 3. If Milestone Detail Modal is open -> close it
+      // 1. If Milestone Detail Modal is open -> close it
       if (state.selectedMilestone) {
         setSelectedMilestone(null);
+        navStateRef.current.selectedMilestone = null;
         return;
       }
 
-      // 4. If Add Drink Modal is open -> close it
+      // 2. If Reset Confirm Modal is open -> close it
+      if (state.showResetConfirmModal) {
+        setShowResetConfirmModal(false);
+        navStateRef.current.showResetConfirmModal = false;
+        return;
+      }
+
+      // 3. If Start Date Modal is open -> close it
+      if (state.showStartDateModal) {
+        setShowStartDateModal(false);
+        navStateRef.current.showStartDateModal = false;
+        return;
+      }
+
+      // 4. If Install Guide Modal is open -> close it
+      if (state.showInstallGuideModal) {
+        setShowInstallGuideModal(false);
+        navStateRef.current.showInstallGuideModal = false;
+        return;
+      }
+
+      // 5. If Add Drink Modal is open -> close it
       if (state.showAddModal) {
         setShowAddModal(false);
+        navStateRef.current.showAddModal = false;
         return;
       }
 
-      // 5. If in subview ('stats' or 'settings') -> navigate back to 'home'
+      // 6. If in subview ('stats' or 'settings') -> navigate back to 'home'
       if (state.view !== 'home') {
         setView('home');
+        navStateRef.current.view = 'home';
         return;
       }
-
-      // 6. If already on 'home' with no open modals -> show Exit confirmation prompt
-      // Push history state back so the browser stays in the app and shows the confirm dialog
-      window.history.pushState({ screen: 'home' }, '');
-      setShowExitConfirmModal(true);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -858,6 +1181,13 @@ export default function Page() {
     localStorage.setItem('zerocaff_accent', newAccent);
   };
 
+  const toggleShowMilestoneCard = (val?: boolean) => {
+    const nextVal = typeof val === 'boolean' ? val : !showMilestoneCard;
+    setShowMilestoneCard(nextVal);
+    localStorage.setItem('zerocaff_show_milestone_card', nextVal.toString());
+    showToast(nextVal ? "Karta następnego kamienia milowego jest widoczna" : "Ukryto kartę kamienia milowego na ekranie głównym");
+  };
+
   // Navigation handlers with History integration for System Back Button
   const navigateToView = (newView: 'home' | 'stats' | 'settings') => {
     if (view !== newView) {
@@ -868,30 +1198,78 @@ export default function Page() {
     }
   };
 
-  // Open add modal initialized with current date/time with history entry
+  // Open add modal initialized with current date/time
   const handleOpenAddModal = () => {
     const currentDate = new Date();
     setCustomTimeDate(format(currentDate, 'yyyy-MM-dd'));
     setCustomTimeHour(format(currentDate, 'HH:mm'));
     setIsCustomTimeOpen(false);
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ screen: 'add-modal' }, '');
-    }
     setShowAddModal(true);
+    navStateRef.current.showAddModal = true;
   };
 
   const handleOpenMilestone = (milestone: Milestone) => {
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ screen: 'milestone-modal' }, '');
-    }
     setSelectedMilestone(milestone);
+    navStateRef.current.selectedMilestone = milestone;
+  };
+
+  const handleCloseMilestone = () => {
+    setSelectedMilestone(null);
+    navStateRef.current.selectedMilestone = null;
   };
 
   const handleOpenInstallGuide = () => {
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ screen: 'install-guide-modal' }, '');
-    }
     setShowInstallGuideModal(true);
+    navStateRef.current.showInstallGuideModal = true;
+  };
+
+  const handleCloseInstallGuide = () => {
+    setShowInstallGuideModal(false);
+    navStateRef.current.showInstallGuideModal = false;
+  };
+
+  const handleOpenStartDateModal = () => {
+    const d = new Date(statsStartDate);
+    setCustomStartInputDate(format(d, 'yyyy-MM-dd'));
+    setCustomStartInputHour(format(d, 'HH:mm'));
+    setShowStartDateModal(true);
+    navStateRef.current.showStartDateModal = true;
+  };
+
+  const handleCloseStartDateModal = () => {
+    setShowStartDateModal(false);
+    navStateRef.current.showStartDateModal = false;
+  };
+
+  const handleResetStatsToToday = (resetTimerToo = false) => {
+    const todayZero = new Date();
+    todayZero.setHours(0, 0, 0, 0);
+    const startTimestamp = todayZero.getTime();
+    
+    setStatsStartDate(startTimestamp);
+    localStorage.setItem('zerocaff_stats_start_date', startTimestamp.toString());
+    
+    if (resetTimerToo) {
+      const nowTime = Date.now();
+      setLastIntake(nowTime);
+      localStorage.setItem('zerocaff_last_intake', nowTime.toString());
+    }
+    
+    showToast("Statystyki i czyste dni liczone od dzisiaj!");
+    setShowStartDateModal(false);
+  };
+
+  const handleSaveCustomStartDate = () => {
+    if (!customStartInputDate) return;
+    const [h, m] = (customStartInputHour || '00:00').split(':').map(Number);
+    const chosenDate = new Date(customStartInputDate);
+    chosenDate.setHours(h || 0, m || 0, 0, 0);
+    const startTimestamp = chosenDate.getTime();
+    
+    setStatsStartDate(startTimestamp);
+    localStorage.setItem('zerocaff_stats_start_date', startTimestamp.toString());
+    showToast(`Punkt startowy zaktualizowany: ${format(chosenDate, 'd MMMM yyyy', { locale: pl })}`);
+    setShowStartDateModal(false);
   };
 
   const addLog = (drink: Drink) => {
@@ -1043,16 +1421,57 @@ export default function Page() {
     }
   }, [diffSeconds, isClient, notificationPermission, notificationsEnabled]);
 
-  const clearAllData = () => {
-    if (confirm("UWAGA: Czy na pewno chcesz wyczyścić wszystkie dane, logi i zresetować aplikację do ustawień fabrycznych?")) {
-      localStorage.clear();
-      setLogs([]);
-      const start = Date.now();
-      setLastIntake(start);
-      setTheme('dark');
-      setAccentKey('orange');
-      alert("Dane zostały zresetowane.");
-    }
+  const handleOpenResetModal = (type: 'factory' | 'logs' | 'timer') => {
+    setResetModalType(type);
+    setShowResetConfirmModal(true);
+    navStateRef.current.showResetConfirmModal = true;
+  };
+
+  const handleCloseResetModal = () => {
+    setShowResetConfirmModal(false);
+    setResetModalType(null);
+    navStateRef.current.showResetConfirmModal = false;
+  };
+
+  const executeClearLogs = () => {
+    setLogs([]);
+    localStorage.setItem('zerocaff_logs', '[]');
+    handleCloseResetModal();
+    showToast("Historia wszystkich wpisów napojów została pomyślnie wyczyszczona.");
+  };
+
+  const executeResetTimer = () => {
+    const nowTs = Date.now();
+    setLastIntake(nowTs);
+    localStorage.setItem('zerocaff_last_intake', nowTs.toString());
+    handleCloseResetModal();
+    showToast("Licznik abstynencji został pomyślnie zresetowany do teraz (00:00:00).");
+  };
+
+  const executeFactoryReset = () => {
+    localStorage.clear();
+    setLogs([]);
+    const start = Date.now();
+    setLastIntake(start);
+    setStatsStartDate(start);
+    setTheme('dark');
+    setAccentKey('orange');
+    setAddBtnStyle('pill');
+    setNotificationsEnabled(true);
+    setShowMilestoneCard(true);
+    
+    // Explicitly write clean fresh defaults to localStorage
+    localStorage.setItem('zerocaff_last_intake', start.toString());
+    localStorage.setItem('zerocaff_stats_start_date', start.toString());
+    localStorage.setItem('zerocaff_logs', '[]');
+    localStorage.setItem('zerocaff_theme', 'dark');
+    localStorage.setItem('zerocaff_accent', 'orange');
+    localStorage.setItem('zerocaff_add_btn_style', 'pill');
+    localStorage.setItem('zerocaff_notif_enabled', 'true');
+    localStorage.setItem('zerocaff_show_milestone_card', 'true');
+    
+    handleCloseResetModal();
+    showToast("Pomyślnie wyczyszczono wszystkie dane i zresetowano aplikację do stanu fabrycznego.");
   };
 
   // Milestone Progress
@@ -1110,6 +1529,9 @@ export default function Page() {
 
   // --- Stats Calculations: 60-Day Daily Chart with Linear Regression ---
   const DAILY_DAYS_COUNT = 60;
+  const statsStartDateZero = new Date(statsStartDate);
+  statsStartDateZero.setHours(0, 0, 0, 0);
+
   const chartData60 = Array.from({ length: DAILY_DAYS_COUNT }).map((_, i) => {
     const date = subDays(now, (DAILY_DAYS_COUNT - 1) - i);
     const dayLogs = logs.filter(l => isSameDay(new Date(l.timestamp), date));
@@ -1125,6 +1547,8 @@ export default function Page() {
     else if (daysAgo === 2) relativeLabel = '2 DNI TEMU';
     else relativeLabel = format(date, 'EEE', { locale: pl }).toUpperCase();
 
+    const isBeforeStatsStart = date.getTime() < statsStartDateZero.getTime();
+
     return {
       date,
       name: format(date, 'd MMM', { locale: pl }),
@@ -1138,8 +1562,16 @@ export default function Page() {
       drinksDetail,
       dayLogs,
       isToday: i === (DAILY_DAYS_COUNT - 1),
+      isBeforeStatsStart,
     };
   });
+
+  const trackedChartDays = chartData60.filter(d => !d.isBeforeStatsStart);
+  const totalTrackedDaysCount = Math.max(1, trackedChartDays.length);
+  const cleanDaysSinceStart = trackedChartDays.filter(d => d.mg === 0).length;
+  const cleanDaysSinceStartPercent = Math.round((cleanDaysSinceStart / totalTrackedDaysCount) * 100);
+  const totalMgSinceStart = trackedChartDays.reduce((sum, d) => sum + d.mg, 0);
+  const avgDailyMgSinceStart = Math.round(totalMgSinceStart / totalTrackedDaysCount);
 
   // Linear Regression for 60-Day Daily Trendline
   const nPoints60 = chartData60.length;
@@ -1440,9 +1872,9 @@ export default function Page() {
             </div>
           </div>
 
-          {/* DELIKATNIE POWIĘKSZONY PRZYCISK OPCJI NA GÓRZE */}
+          {/* PRZYCISK USTAWIEŃ I OPCJI NA GÓRZE */}
           <button
-            id="top-settings-btn"
+            id="nav-settings-btn"
             onClick={() => navigateToView(view === 'settings' ? 'home' : 'settings')}
             className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm active:scale-95 backdrop-blur-md ${
               view === 'settings' 
@@ -1818,138 +2250,221 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* EXPLICIT RING VALUE CARDS (OZNACZENIE I WARTOŚĆ KAŻDEGO PIERŚCIENIA) */}
-                <div className="w-full space-y-1.5 mb-5">
-                  <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-zinc-400">
-                    <span>Odczyt pierścieni czasu:</span>
-                    <span className="text-[10px] text-zinc-500">cykle odliczania</span>
+                {/* EXPLICIT RING VALUE CARDS (COLLAPSIBLE / EXPANDABLE) */}
+                <div className="w-full mb-4">
+                  <div className="flex items-center justify-between px-1 mb-1.5 text-[11px] font-semibold text-zinc-400">
+                    <span className="flex items-center gap-1.5">
+                      <span>Odczyt pierścieni czasu</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsRingCardsCollapsed(!isRingCardsCollapsed)}
+                      className={`text-[11px] px-2 py-0.5 rounded-lg border flex items-center gap-1 font-semibold transition-all ${innerItemBg} hover:border-zinc-500`}
+                      style={{ color: currentAccent.primary }}
+                    >
+                      <span>{isRingCardsCollapsed ? 'Rozwiń szczegóły' : 'Zwiń'}</span>
+                      {isRingCardsCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 w-full">
-                    {/* Outer Ring: DAYS */}
-                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: currentAccent.primary }} />
-                          Dni
-                        </span>
-                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Zewn.</span>
+                  {isRingCardsCollapsed ? (
+                    /* Compact Summary Strip when Collapsed */
+                    <div 
+                      onClick={() => setIsRingCardsCollapsed(false)}
+                      className={`w-full p-2.5 rounded-2xl border flex items-center justify-around cursor-pointer backdrop-blur-sm transition-all hover:border-zinc-500 active:scale-[0.99] ${cardClasses}`}
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: currentAccent.primary }} />
+                        <span className={muteTextClasses}>Dni:</span>
+                        <span className="font-bold">{days}d</span>
+                        <span className={`text-[10px] ${muteTextClasses}`}>({Math.round(daysCycleProgress)}%)</span>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold tabular-nums">{days}</span>
-                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>dni</span>
+                      <div className="h-3 w-[1px] bg-zinc-700/50" />
+                      <div className="flex items-center gap-1.5 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+                        <span className={muteTextClasses}>Godz:</span>
+                        <span className="font-bold">{hours}h</span>
+                        <span className={`text-[10px] ${muteTextClasses}`}>({Math.round(hoursProgress)}%)</span>
                       </div>
-                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
-                        cykl 7d: {Math.round(daysCycleProgress)}%
-                      </span>
+                      <div className="h-3 w-[1px] bg-zinc-700/50" />
+                      <div className="flex items-center gap-1.5 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+                        <span className={muteTextClasses}>Min:</span>
+                        <span className="font-bold">{minutes}m</span>
+                      </div>
                     </div>
+                  ) : (
+                    /* Expanded 3 Detail Cards */
+                    <div className="grid grid-cols-3 gap-2 w-full animate-in fade-in duration-200">
+                      {/* Outer Ring: DAYS */}
+                      <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: currentAccent.primary }} />
+                            Dni
+                          </span>
+                          <span className={`text-[9px] font-medium ${muteTextClasses}`}>Zewn.</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-bold tabular-nums">{days}</span>
+                          <span className={`text-[10px] font-medium ${muteTextClasses}`}>dni</span>
+                        </div>
+                        <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
+                          cykl 7d: {Math.round(daysCycleProgress)}%
+                        </span>
+                      </div>
 
-                    {/* Middle Ring: HOURS */}
-                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block shrink-0" />
-                          Godziny
+                      {/* Middle Ring: HOURS */}
+                      <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block shrink-0" />
+                            Godziny
+                          </span>
+                          <span className={`text-[9px] font-medium ${muteTextClasses}`}>Środk.</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-bold tabular-nums">{hours}</span>
+                          <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 24h</span>
+                        </div>
+                        <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
+                          doba: {Math.round(hoursProgress)}%
                         </span>
-                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Środk.</span>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold tabular-nums">{hours}</span>
-                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 24h</span>
-                      </div>
-                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
-                        doba: {Math.round(hoursProgress)}%
-                      </span>
-                    </div>
 
-                    {/* Inner Ring: MINUTES */}
-                    <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-violet-400 inline-block shrink-0" />
-                          Minuty
+                      {/* Inner Ring: MINUTES */}
+                      <div className={`border rounded-2xl p-3 flex flex-col relative overflow-hidden backdrop-blur-sm transition-all ${cardClasses}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-violet-400 inline-block shrink-0" />
+                            Minuty
+                          </span>
+                          <span className={`text-[9px] font-medium ${muteTextClasses}`}>Wewn.</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-bold tabular-nums">{minutes}</span>
+                          <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 60m</span>
+                        </div>
+                        <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
+                          godz: {Math.round(minutesProgress)}%
                         </span>
-                        <span className={`text-[9px] font-medium ${muteTextClasses}`}>Wewn.</span>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold tabular-nums">{minutes}</span>
-                        <span className={`text-[10px] font-medium ${muteTextClasses}`}>/ 60m</span>
-                      </div>
-                      <span className={`text-[10px] tabular-nums mt-1 ${muteTextClasses}`}>
-                        godz: {Math.round(minutesProgress)}%
-                      </span>
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* CURRENT / NEXT MILESTONE ACTIVE CARD */}
-                <div 
-                  onClick={() => setSelectedMilestone(nextMilestone)}
-                  className={`w-full rounded-3xl p-5 border relative overflow-hidden backdrop-blur-md cursor-pointer transition-all group ${cardClasses}`}
-                >
+                {/* CURRENT / NEXT MILESTONE ACTIVE CARD (COLLAPSIBLE / TOGGLEABLE) */}
+                {showMilestoneCard ? (
                   <div 
-                    className="absolute top-0 right-0 w-36 h-36 blur-3xl rounded-full opacity-20"
-                    style={{ backgroundColor: currentAccent.primary }}
-                  />
-                  
-                  <div className="flex justify-between items-start mb-3 relative z-10">
-                    <div className="flex items-center gap-2.5">
-                      <div 
-                        className="w-8 h-8 rounded-xl flex items-center justify-center border"
-                        style={{
-                          backgroundColor: currentAccent.badgeBg,
-                          color: currentAccent.primary,
-                          borderColor: currentAccent.badgeBorder
-                        }}
-                      >
-                        <Trophy size={16} />
-                      </div>
-                      <div>
-                        <span 
-                          className="text-[10px] font-bold uppercase tracking-wider"
-                          style={{ color: currentAccent.primary }}
-                        >
-                          Następny Kamień Milowy
-                        </span>
-                        <h3 className="text-base font-semibold flex items-center gap-1.5">
-                          {nextMilestone.name}
-                          <ChevronRight size={14} className={`${muteTextClasses} group-hover:translate-x-0.5 transition-transform`} />
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="text-right pb-1">
-                      <p className={`text-[10px] font-bold ${muteTextClasses}`}>
-                        {remainingDays > 0 ? `${remainingDays}d ${remainingHours}h` : `${remainingHours}h ${remainingMins}m`} do celu
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className={`w-full h-5 rounded-full p-0.5 border relative z-10 mb-2 flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/40 border-zinc-800/80'}`}>
-                    <motion.div 
-                      className="h-full rounded-full"
-                      style={{
-                        backgroundColor: currentAccent.primary,
-                        boxShadow: `0 0 12px ${currentAccent.glow}`
-                      }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${milestoneProgress}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
+                    onClick={() => handleOpenMilestone(nextMilestone)}
+                    className={`w-full rounded-3xl p-5 border relative overflow-hidden backdrop-blur-md cursor-pointer transition-all group ${cardClasses}`}
+                  >
+                    <div 
+                      className="absolute top-0 right-0 w-36 h-36 blur-3xl rounded-full opacity-20"
+                      style={{ backgroundColor: currentAccent.primary }}
                     />
                     
-                    {/* Progress percentage on the right, floating over or next to the bar */}
-                    <div className="absolute right-3 font-bold text-sm select-none" style={{ color: currentAccent.primary, textShadow: theme === 'light' ? '0 1px 2px rgba(255,255,255,0.8)' : '0 1px 4px rgba(0,0,0,0.8)' }}>
-                      {Math.floor(milestoneProgress)}%
+                    <div className="flex justify-between items-start mb-3 relative z-10">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div 
+                          className="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
+                          style={{
+                            backgroundColor: currentAccent.badgeBg,
+                            color: currentAccent.primary,
+                            borderColor: currentAccent.badgeBorder
+                          }}
+                        >
+                          <Trophy size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <span 
+                            className="text-[10px] font-bold uppercase tracking-wider block"
+                            style={{ color: currentAccent.primary }}
+                          >
+                            Następny Kamień Milowy
+                          </span>
+                          <h3 className="text-base font-semibold flex items-center gap-1.5 truncate">
+                            {nextMilestone.name}
+                            <ChevronRight size={14} className={`${muteTextClasses} group-hover:translate-x-0.5 transition-transform shrink-0`} />
+                          </h3>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right pb-0.5">
+                          <p className={`text-[10px] font-bold ${muteTextClasses}`}>
+                            {remainingDays > 0 ? `${remainingDays}d ${remainingHours}h` : `${remainingHours}h ${remainingMins}m`} do celu
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleShowMilestoneCard(false);
+                          }}
+                          className={`p-1.5 rounded-xl border transition-all ${innerItemBg} hover:border-zinc-500 text-zinc-400 hover:text-zinc-200`}
+                          title="Zwiń / wyłącz tę kartę"
+                        >
+                          <EyeOff size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className={`w-full h-5 rounded-full p-0.5 border relative z-10 mb-2 flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/40 border-zinc-800/80'}`}>
+                      <motion.div 
+                        className="h-full rounded-full"
+                        style={{
+                          backgroundColor: currentAccent.primary,
+                          boxShadow: `0 0 12px ${currentAccent.glow}`
+                        }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${milestoneProgress}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
+                      
+                      {/* Progress percentage on the right, floating over or next to the bar */}
+                      <div className="absolute right-3 font-bold text-sm select-none" style={{ color: currentAccent.primary, textShadow: theme === 'light' ? '0 1px 2px rgba(255,255,255,0.8)' : '0 1px 4px rgba(0,0,0,0.8)' }}>
+                        {Math.floor(milestoneProgress)}%
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs relative z-10">
+                      <p className={`line-clamp-1 ${subTextClasses}`}>
+                        <span style={{ color: currentAccent.primary }} className="font-semibold">{nextMilestone.benefit}:</span> {nextMilestone.description}
+                      </p>
+                      <span className="text-[10px] font-semibold text-cyan-400 shrink-0 ml-2">Szczegóły ▾</span>
                     </div>
                   </div>
+                ) : (
+                  /* Compact Ribbon when Card is Disabled/Collapsed */
+                  <div className={`w-full p-3 px-4 rounded-2xl border flex items-center justify-between backdrop-blur-sm transition-all ${cardClasses}`}>
+                    <div 
+                      onClick={() => handleOpenMilestone(nextMilestone)}
+                      className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
+                    >
+                      <Trophy size={16} style={{ color: currentAccent.primary }} className="shrink-0" />
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-xs font-semibold truncate">
+                          Następny cel: <strong style={{ color: currentAccent.primary }}>{nextMilestone.name}</strong>
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border shrink-0 ${theme === 'light' ? 'bg-zinc-100 border-zinc-300' : 'bg-zinc-800 border-zinc-700'}`}>
+                          {Math.floor(milestoneProgress)}%
+                        </span>
+                      </div>
+                    </div>
 
-                  <div className="flex items-center justify-between text-xs relative z-10">
-                    <p className={`line-clamp-1 ${subTextClasses}`}>
-                      <span style={{ color: currentAccent.primary }} className="font-semibold">{nextMilestone.benefit}:</span> {nextMilestone.description}
-                    </p>
-                    <span className="text-[10px] font-semibold text-cyan-400 shrink-0 ml-2">Kliknij po szczegóły</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleShowMilestoneCard(true)}
+                      className={`text-[11px] px-2.5 py-1 rounded-xl border flex items-center gap-1.5 font-semibold transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 active:scale-95`}
+                      style={{ color: currentAccent.primary }}
+                    >
+                      <Eye size={12} />
+                      <span>Rozwiń kartę</span>
+                    </button>
                   </div>
-                </div>
+                )}
 
                 {/* COLLAPSIBLE MILESTONES SECTION (ZWIJANA DO 2 RZĘDÓW ZE SKROJONYM WIDOKIEM NA KOLEJNY CEL) */}
                 <div className="w-full mt-6">
@@ -2016,12 +2531,13 @@ export default function Page() {
                           {visibleMilestones.map((milestone) => {
                             const isUnlocked = diffSeconds >= milestone.seconds;
                             const isNext = milestone.id === nextMilestone.id && !isUnlocked;
+                            const info = getMilestoneCountdownInfo(milestone.seconds, diffSeconds, lastIntake);
 
                             return (
                               <motion.button
                                 key={milestone.id}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => setSelectedMilestone(milestone)}
+                                onClick={() => handleOpenMilestone(milestone)}
                                 className={`relative rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all border text-center ${
                                   isUnlocked
                                     ? `${theme === 'light' ? 'bg-orange-50/80 border-orange-200' : 'bg-zinc-900 border-zinc-700/80 shadow-md'}`
@@ -2056,8 +2572,17 @@ export default function Page() {
                                   {milestone.code}
                                 </span>
 
-                                <span className={`text-[8.5px] mt-0.5 truncate max-w-full font-medium ${muteTextClasses}`}>
-                                  {milestone.name}
+                                {/* Countdown / Status Micro Badge */}
+                                <span 
+                                  className={`text-[8px] font-bold mt-1 px-1.5 py-0.5 rounded-md truncate max-w-full border ${
+                                    isUnlocked 
+                                      ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+                                      : isNext
+                                      ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/15'
+                                      : 'border-zinc-500/20 text-zinc-400 bg-zinc-500/10'
+                                  }`}
+                                >
+                                  {info.badgeText}
                                 </span>
 
                                 {/* Glow Indicator for Next Target */}
@@ -2093,19 +2618,24 @@ export default function Page() {
                 <div className="flex items-center justify-between pt-2">
                   <div>
                     <h2 className="text-xl font-bold tracking-tight">Centrum Statystyk</h2>
-                    <p className={`text-xs ${muteTextClasses}`}>Twoje postępy w detoksie kofeinowym</p>
+                    <p className={`text-xs ${muteTextClasses}`}>
+                      Liczone od {format(new Date(statsStartDate), 'd MMMM yyyy', { locale: pl })} • <span className="font-semibold text-emerald-400">{cleanDaysSinceStart} czystych dni ({cleanDaysSinceStartPercent}%)</span>
+                    </p>
                   </div>
-                  <div 
-                    className="px-3 py-1 rounded-full border text-xs font-semibold flex items-center gap-1.5"
+                  <button
+                    type="button"
+                    onClick={() => navigateToView('settings')}
+                    className="px-3 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5 transition-all hover:opacity-80 active:scale-95 shadow-sm"
                     style={{
                       backgroundColor: currentAccent.badgeBg,
                       color: currentAccent.primary,
                       borderColor: currentAccent.badgeBorder
                     }}
+                    title="Przejdź do ustawień, aby zmienić punkt startowy"
                   >
-                    <ShieldCheck size={14} />
-                    <span>Aktywny Detoks</span>
-                  </div>
+                    <Sliders size={13} />
+                    <span>Ustawienia</span>
+                  </button>
                 </div>
 
                 {/* 2x2 Clean Recovery Metrics (Bez kalkulatora oszczędności) */}
@@ -2216,26 +2746,26 @@ export default function Page() {
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
                       <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        {chartViewMode === 'daily' ? 'Czyste dni' : 'Czyste tygodnie'}
+                        {chartViewMode === 'daily' ? 'Czyste dni (od startu)' : 'Czyste tygodnie'}
                       </div>
                       <div className="text-sm font-bold text-emerald-400 mt-0.5">
-                        {chartViewMode === 'daily' ? `${cleanDays60} / 60` : `${cleanWeeksCount} / 12`}
+                        {chartViewMode === 'daily' ? `${cleanDaysSinceStart} / ${totalTrackedDaysCount}` : `${cleanWeeksCount} / 12`}
                       </div>
                     </div>
                     <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
                       <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        {chartViewMode === 'daily' ? 'Śr. dzienna' : 'Śr. tygodniowa'}
+                        {chartViewMode === 'daily' ? 'Śr. dzienna (od startu)' : 'Śr. tygodniowa'}
                       </div>
                       <div className="text-sm font-bold mt-0.5" style={{ color: currentAccent.primary }}>
-                        {chartViewMode === 'daily' ? `~${avgDailyMg60} mg` : `~${avgWeeklyMg} mg`}
+                        {chartViewMode === 'daily' ? `~${avgDailyMgSinceStart} mg` : `~${avgWeeklyMg} mg`}
                       </div>
                     </div>
                     <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
                       <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        Suma kofeiny
+                        {chartViewMode === 'daily' ? 'Suma (od startu)' : 'Suma kofeiny'}
                       </div>
                       <div className="text-sm font-bold mt-0.5">
-                        {chartViewMode === 'daily' ? `${total60DayMg} mg` : `${totalWeeklyMg} mg`}
+                        {chartViewMode === 'daily' ? `${totalMgSinceStart} mg` : `${totalWeeklyMg} mg`}
                       </div>
                     </div>
                   </div>
@@ -2319,7 +2849,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {/* Chart Rendering Container */}
+                  {/* D3-Powered Chart Rendering Container */}
                   {chartViewMode === 'daily' ? (
                     <div
                       ref={dailyChartScrollRef}
@@ -2335,353 +2865,245 @@ export default function Page() {
                       onMouseMove={handleChartMouseMove}
                     >
                       <div className="min-w-[1800px] h-[230px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={chartData60WithTrend} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                            <XAxis 
-                              dataKey="name" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              interval={0}
-                              tick={({ x, y, payload }) => {
-                                const item = chartData60WithTrend.find(d => d.name === payload.value);
-                                const isToday = item?.isToday;
-                                return (
-                                  <g transform={`translate(${x},${y})`}>
-                                    <text 
-                                      x={0} 
-                                      y={0} 
-                                      dy={12} 
-                                      textAnchor="middle" 
-                                      fill={isToday ? currentAccent.primary : (theme === 'light' ? '#64748b' : '#94a3b8')}
-                                      fontSize={isToday ? 11 : 9.5}
-                                      fontWeight={isToday ? 700 : 500}
-                                    >
-                                      {item?.shortDate || payload.value}
-                                    </text>
-                                    <text 
-                                      x={0} 
-                                      y={0} 
-                                      dy={22} 
-                                      textAnchor="middle" 
-                                      fill={isToday ? currentAccent.primary : (theme === 'light' ? '#94a3b8' : '#64748b')}
-                                      fontSize={8}
-                                      fontWeight={isToday ? 700 : 400}
-                                    >
-                                      {isToday ? 'Dziś' : item?.dayAbbr}
-                                    </text>
-                                  </g>
-                                );
-                              }}
-                            />
-                            <YAxis 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
-                            />
-                            <Tooltip 
-                              cursor={{ fill: theme === 'light' ? '#f1f5f9' : '#1e293b', opacity: 0.4 }}
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  const mgVal = Number(payload.find(p => p.dataKey === 'mg')?.value ?? 0);
-                                  const trendVal = Number(payload.find(p => p.dataKey === 'trend')?.value ?? 0);
-                                  return (
-                                    <div className={`text-xs py-2.5 px-3.5 rounded-2xl shadow-2xl border min-w-[190px] ${modalBg}`}>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="font-bold text-xs" style={{ color: currentAccent.primary }}>
-                                          {item.fullDate}
-                                        </span>
-                                        {item.isToday && (
-                                          <span 
-                                            className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white uppercase tracking-wider"
-                                            style={{ backgroundColor: currentAccent.primary }}
-                                          >
-                                            Dzisiaj
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="mt-2 space-y-1">
-                                        <div className="flex items-center justify-between text-xs font-semibold">
-                                          <span>Spożycie:</span>
-                                          <span className={mgVal === 0 ? 'text-emerald-500' : mgVal > 400 ? 'text-rose-500' : ''}>
-                                            {mgVal} mg
-                                          </span>
-                                        </div>
-                                        <div className={`flex items-center justify-between text-[11px] font-medium ${muteTextClasses}`}>
-                                          <span>Wartość trendu:</span>
-                                          <span>~{trendVal} mg</span>
-                                        </div>
-                                      </div>
-                                      {item.drinksDetail && item.drinksDetail.length > 0 && (
-                                        <div className="mt-2 pt-2 border-t border-zinc-500/20 text-[10px] space-y-0.5">
-                                          <span className={`font-semibold ${subTextClasses}`}>Wypite napoje:</span>
-                                          {item.drinksDetail.map((d: string, idx: number) => (
-                                            <p key={idx} className={muteTextClasses}>• {d}</p>
-                                          ))}
-                                        </div>
-                                      )}
-                                      {mgVal === 0 && (
-                                        <div className="mt-2 pt-1.5 border-t border-emerald-500/20 text-[10px] font-bold text-emerald-500 flex items-center gap-1">
-                                          <Sparkles size={11} /> 100% Czystości (0 mg)
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            {/* Daily Consumption Bars */}
-                            <Bar dataKey="mg" radius={[4, 4, 0, 0]} maxBarSize={16}>
-                              {chartData60WithTrend.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-60-${index}`} 
-                                  fill={
-                                    entry.mg === 0 
-                                      ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
-                                      : entry.mg > 400 
-                                      ? '#ef4444' 
-                                      : currentAccent.primary
-                                  }
-                                />
-                              ))}
-                            </Bar>
-                            {/* Visual Linear Regression Trend Line */}
-                            <Line 
-                              type="monotone" 
-                              dataKey="trend" 
-                              stroke={total60DayMg === 0 ? '#10b981' : isDeclining60 ? '#10b981' : isIncreasing60 ? '#f43f5e' : currentAccent.primary} 
-                              strokeWidth={2} 
-                              strokeDasharray="3 3" 
-                              dot={false}
-                              activeDot={{ r: 4 }}
-                            />
-                          </ComposedChart>
-                        </ResponsiveContainer>
+                        <D3CaffeineChart
+                          viewMode="daily"
+                          dailyData={chartData60WithTrend}
+                          weeklyData={weeklyChartDataWithTrend}
+                          accentColor={currentAccent.primary}
+                          accentGlow={currentAccent.glow}
+                          badgeBg={currentAccent.badgeBg}
+                          badgeBorder={currentAccent.badgeBorder}
+                          theme={theme}
+                          isDeclining={isDeclining60}
+                          isIncreasing={isIncreasing60}
+                          totalMg={total60DayMg}
+                          modalBgClass={modalBg}
+                          subTextClass={subTextClasses}
+                          muteTextClass={muteTextClasses}
+                          scrollContainerRef={dailyChartScrollRef}
+                        />
                       </div>
                     </div>
                   ) : (
                     <div className="w-full h-[230px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={weeklyChartDataWithTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
-                            dy={8}
-                          />
-                          <YAxis 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fill: theme === 'light' ? '#71717a' : '#94a3b8', fontSize: 10 }} 
-                          />
-                          <Tooltip 
-                            cursor={{ fill: theme === 'light' ? '#f1f5f9' : '#1e293b', opacity: 0.4 }}
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const item = payload[0].payload;
-                                const mgVal = Number(payload.find(p => p.dataKey === 'mg')?.value ?? 0);
-                                const trendVal = Number(payload.find(p => p.dataKey === 'trend')?.value ?? 0);
-                                return (
-                                  <div className={`text-xs py-2.5 px-3.5 rounded-2xl shadow-2xl border min-w-[210px] ${modalBg}`}>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="font-bold text-xs" style={{ color: currentAccent.primary }}>
-                                        {item.fullDate}
-                                      </span>
-                                      {item.isCurrentWeek && (
-                                        <span 
-                                          className="text-[9px] px-1.5 py-0.5 rounded-md font-bold text-white uppercase tracking-wider"
-                                          style={{ backgroundColor: currentAccent.primary }}
-                                        >
-                                          Bieżący tydzień
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="mt-2 space-y-1">
-                                      <div className="flex items-center justify-between text-xs font-semibold">
-                                        <span>Suma tygodnia:</span>
-                                        <span className={mgVal === 0 ? 'text-emerald-500' : ''}>{mgVal} mg</span>
-                                      </div>
-                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
-                                        <span>Średnia dzienna:</span>
-                                        <span>~{item.avgDaily} mg/dzień</span>
-                                      </div>
-                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
-                                        <span>Czyste dni:</span>
-                                        <span className="text-emerald-400 font-medium">{item.cleanDays}/7 dni</span>
-                                      </div>
-                                      <div className={`flex items-center justify-between text-[11px] ${muteTextClasses}`}>
-                                        <span>Wartość trendu:</span>
-                                        <span>~{trendVal} mg</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          {/* Weekly Consumption Bars */}
-                          <Bar dataKey="mg" radius={[6, 6, 0, 0]} maxBarSize={26}>
-                            {weeklyChartDataWithTrend.map((entry, index) => (
-                              <Cell 
-                                key={`cell-w-${index}`} 
-                                fill={
-                                  entry.mg === 0 
-                                    ? (theme === 'light' ? '#e2e8f0' : '#27272a') 
-                                    : entry.isCurrentWeek
-                                    ? currentAccent.primary
-                                    : currentAccent.primary
-                                }
-                              />
-                            ))}
-                          </Bar>
-                          {/* Weekly Linear Regression Trend Line */}
-                          <Line 
-                            type="monotone" 
-                            dataKey="trend" 
-                            stroke={totalWeeklyMg === 0 ? '#10b981' : isDecliningW ? '#10b981' : isIncreasingW ? '#f43f5e' : currentAccent.primary} 
-                            strokeWidth={2.5} 
-                            strokeDasharray="4 4" 
-                            dot={{ 
-                              r: 3.5, 
-                              strokeWidth: 2, 
-                              fill: theme === 'light' ? '#ffffff' : '#0f1118',
-                              stroke: totalWeeklyMg === 0 ? '#10b981' : isDecliningW ? '#10b981' : isIncreasingW ? '#f43f5e' : currentAccent.primary
-                            }}
-                            activeDot={{ r: 5 }}
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
+                      <D3CaffeineChart
+                        viewMode="weekly"
+                        dailyData={chartData60WithTrend}
+                        weeklyData={weeklyChartDataWithTrend}
+                        accentColor={currentAccent.primary}
+                        accentGlow={currentAccent.glow}
+                        badgeBg={currentAccent.badgeBg}
+                        badgeBorder={currentAccent.badgeBorder}
+                        theme={theme}
+                        isDeclining={isDecliningW}
+                        isIncreasing={isIncreasingW}
+                        totalMg={totalWeeklyMg}
+                        modalBgClass={modalBg}
+                        subTextClass={subTextClasses}
+                        muteTextClass={muteTextClasses}
+                      />
                     </div>
                   )}
                 </div>
 
-                {/* SZYBKIE UZUPEŁNIANIE KALENDARZA (60 DNI) - ELEGANCKA KARTA Z PRZEJŚCIEM DO OKNA */}
-                <div id="quick-calendar-filler-card" className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-start gap-3.5 mb-4">
-                    <div 
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0"
-                      style={{
-                        backgroundColor: currentAccent.badgeBg,
-                        borderColor: currentAccent.badgeBorder,
-                        color: currentAccent.primary,
-                      }}
-                    >
-                      <CalendarDays size={22} />
+                {/* SZYBKIE UZUPEŁNIANIE KALENDARZA (60 DNI) - ZWARTA KARTA AKCJI */}
+                <div 
+                  id="quick-calendar-filler-card"
+                  onClick={() => setShowQuickFillModal(true)}
+                  className={`border rounded-2xl p-3 sm:px-4 backdrop-blur-sm cursor-pointer group transition-all relative overflow-hidden active:scale-[0.99] hover:border-zinc-500/50 ${cardClasses}`}
+                >
+                  <div 
+                    className="absolute -right-8 -top-8 w-28 h-28 blur-2xl rounded-full opacity-15 pointer-events-none transition-opacity group-hover:opacity-30"
+                    style={{ backgroundColor: currentAccent.primary }}
+                  />
+
+                  <div className="flex items-center justify-between gap-3 relative z-10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 transition-transform group-hover:scale-105"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          borderColor: currentAccent.badgeBorder,
+                          color: currentAccent.primary,
+                        }}
+                      >
+                        <CalendarDays size={18} />
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">
+                          Szybkie Uzupełnianie Kalendarza
+                        </h3>
+                        <span 
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0"
+                          style={{
+                            backgroundColor: currentAccent.badgeBg,
+                            borderColor: currentAccent.badgeBorder,
+                            color: currentAccent.primary,
+                          }}
+                        >
+                          60 dni
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="text-sm sm:text-base font-bold tracking-tight text-white">
-                        Szybkie Uzupełnianie Kalendarza (60 Dni)
-                      </h3>
-                      <p className={`text-xs mt-1 leading-relaxed ${muteTextClasses}`}>
-                        Otwórz wyskakujące okienko z pojemną siatką 60 dni na jednym ekranie, aby szybko przeklikać wypite kawy w historii.
-                      </p>
+
+                    <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                      <span 
+                        className="text-xs font-semibold hidden sm:inline-block transition-colors group-hover:text-white"
+                        style={{ color: currentAccent.primary }}
+                      >
+                        Otwórz
+                      </span>
+                      <div 
+                        className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all group-hover:translate-x-0.5"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          borderColor: currentAccent.badgeBorder,
+                          color: currentAccent.primary,
+                        }}
+                      >
+                        <ChevronRight size={15} />
+                      </div>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickFillModal(true)}
-                    className="w-full py-3 px-5 rounded-2xl text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-md hover:brightness-110 active:scale-98"
-                    style={{
-                      backgroundColor: currentAccent.primary,
-                      boxShadow: `0 0 16px ${currentAccent.glow}`,
-                    }}
-                  >
-                    <CalendarDays size={18} />
-                    <span>Otwórz okno uzupełniania (60 dni)</span>
-                  </button>
                 </div>
 
-                {/* NAJCZĘSTSZE PORY SPOŻYCIA (ANALIZA CZASOWA & KRYTYCZNE PUNKTY DNIA) */}
+                {/* NAJCZĘSTSZE PORY SPOŻYCIA (COLLAPSIBLE / EXPANDABLE) */}
                 <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center justify-between mb-3">
+                  <div 
+                    onClick={() => setIsTimePatternsCollapsed(!isTimePatternsCollapsed)}
+                    className="flex items-center justify-between cursor-pointer select-none group"
+                  >
                     <div className="flex items-center gap-2">
                       <Clock size={16} style={{ color: currentAccent.primary }} />
-                      <h3 className="text-xs font-bold uppercase tracking-wider">
-                        Najczęstsze Pory Spożycia
-                      </h3>
+                      <div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider">
+                          Najczęstsze Pory Spożycia
+                        </h3>
+                        <span className={`text-[10px] ${muteTextClasses}`}>
+                          {peakBucket && peakBucket.count > 0 
+                            ? `Główne okno: ${peakBucket.label} (${peakBucket.timeRange})` 
+                            : 'Analiza rytmu dobowego'}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-[10px] font-medium ${muteTextClasses}`}>Rytm Dobowy</span>
-                  </div>
-                  
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Analiza historii wskazuje momenty dnia, w których najczęściej sięgasz po kofeinę, ułatwiając przełamanie nawyku.
-                  </p>
 
-                  {/* Critical Window Diagnosis Card (if entries exist) */}
-                  {peakBucket ? (
-                    <div className="mb-4 p-3.5 rounded-2xl border bg-orange-500/10 border-orange-500/30">
-                      <div className="flex items-center gap-2 text-xs font-bold text-orange-500 mb-1">
-                        <AlertCircle size={15} />
-                        <span>Krytyczny Punkt Dnia: {peakBucket.label} ({peakBucket.timeRange})</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTimePatternsCollapsed(!isTimePatternsCollapsed);
+                      }}
+                      className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl border transition-all ${innerItemBg} hover:opacity-90`}
+                      style={{ color: currentAccent.primary }}
+                    >
+                      <span>{isTimePatternsCollapsed ? 'Rozwiń' : 'Zwiń'}</span>
+                      {isTimePatternsCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                    </button>
+                  </div>
+
+                  {/* Collapsed Compact View */}
+                  {isTimePatternsCollapsed && (
+                    <div 
+                      onClick={() => setIsTimePatternsCollapsed(false)}
+                      className={`mt-3 p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:border-zinc-500 active:scale-[0.99] ${innerItemBg}`}
+                    >
+                      <div className="flex items-center gap-2 text-xs">
+                        {peakBucket && peakBucket.count > 0 ? (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                            <span className="font-semibold">Szczyt: {peakBucket.label} ({peakBucket.count}x napojów)</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                            <span className={subTextClasses}>Brak utrwalonych godzin ryzyka</span>
+                          </>
+                        )}
                       </div>
-                      <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
-                        {peakBucket.description}
-                      </p>
-                      <div className="mt-2 pt-2 border-t border-orange-500/20 text-[11px] font-medium text-orange-400">
-                        💡 <strong className="text-orange-300">Rekomendacja:</strong> {peakBucket.advice}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mb-4 p-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                      <span>Brak zarejestrowanych napojów – brak wykształconych krytycznych okien czasowych!</span>
+                      <span className={`text-[10px] font-semibold ${muteTextClasses}`}>Pokaż 4 pory dnia ▾</span>
                     </div>
                   )}
 
-                  {/* 4 Time Slots Grid / Progress Breakdown */}
-                  <div className="space-y-2.5">
-                    {bucketStats.map((bucket) => {
-                      const IconComponent = bucket.icon;
-                      const isPeak = peakBucket?.id === bucket.id && bucket.count > 0;
-                      return (
-                        <div 
-                          key={bucket.id}
-                          className={`p-3 rounded-2xl border transition-all ${innerItemBg} ${isPeak ? 'ring-1 ring-orange-500/40' : ''}`}
-                        >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-6 h-6 rounded-lg flex items-center justify-center"
-                                style={{ backgroundColor: `${bucket.color}20`, color: bucket.color }}
-                              >
-                                <IconComponent size={14} />
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold">{bucket.label}</span>
-                                <span className={`text-[10px] ml-2 ${muteTextClasses}`}>({bucket.timeRange})</span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs font-bold">{bucket.count}x</span>
-                              <span className={`text-[10px] ml-1.5 font-medium ${muteTextClasses}`}>({bucket.mg} mg)</span>
-                            </div>
-                          </div>
+                  {/* Expanded Full View */}
+                  {!isTimePatternsCollapsed && (
+                    <div className="mt-4 space-y-3 animate-in fade-in duration-200">
+                      <p className={`text-xs ${muteTextClasses}`}>
+                        Analiza historii wskazuje momenty dnia, w których najczęściej sięgasz po kofeinę, ułatwiając przełamanie nawyku.
+                      </p>
 
-                          {/* Mini Progress Bar */}
-                          <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
-                            <div 
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{ 
-                                width: `${bucket.percentage}%`, 
-                                backgroundColor: bucket.color 
-                              }}
-                            />
+                      {/* Critical Window Diagnosis Card (if entries exist) */}
+                      {peakBucket && peakBucket.count > 0 ? (
+                        <div className="p-3.5 rounded-2xl border bg-orange-500/10 border-orange-500/30">
+                          <div className="flex items-center gap-2 text-xs font-bold text-orange-500 mb-1">
+                            <AlertCircle size={15} />
+                            <span>Krytyczny Punkt Dnia: {peakBucket.label} ({peakBucket.timeRange})</span>
                           </div>
-
-                          <div className="flex justify-between items-center mt-1 text-[10px]">
-                            <span className={muteTextClasses}>{bucket.percentage}% wszystkich napojów</span>
-                            {isPeak && (
-                              <span className="text-orange-500 font-bold uppercase tracking-wider text-[9px]">Główne Okno Ryzyka</span>
-                            )}
+                          <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                            {peakBucket.description}
+                          </p>
+                          <div className="mt-2 pt-2 border-t border-orange-500/20 text-[11px] font-medium text-orange-400">
+                            💡 <strong className="text-orange-300">Rekomendacja:</strong> {peakBucket.advice}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      ) : (
+                        <div className="p-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                          <span>Brak zarejestrowanych napojów – brak wykształconych krytycznych okien czasowych!</span>
+                        </div>
+                      )}
+
+                      {/* 4 Time Slots Grid / Progress Breakdown */}
+                      <div className="space-y-2.5">
+                        {bucketStats.map((bucket) => {
+                          const IconComponent = bucket.icon;
+                          const isPeak = peakBucket?.id === bucket.id && bucket.count > 0;
+                          return (
+                            <div 
+                              key={bucket.id}
+                              className={`p-3 rounded-2xl border transition-all ${innerItemBg} ${isPeak ? 'ring-1 ring-orange-500/40' : ''}`}
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-6 h-6 rounded-lg flex items-center justify-center"
+                                    style={{ backgroundColor: `${bucket.color}20`, color: bucket.color }}
+                                  >
+                                    <IconComponent size={14} />
+                                  </div>
+                                  <div>
+                                    <span className="text-xs font-bold">{bucket.label}</span>
+                                    <span className={`text-[10px] ml-2 ${muteTextClasses}`}>({bucket.timeRange})</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-xs font-bold">{bucket.count}x</span>
+                                  <span className={`text-[10px] ml-1.5 font-medium ${muteTextClasses}`}>({bucket.mg} mg)</span>
+                                </div>
+                              </div>
+
+                              {/* Mini Progress Bar */}
+                              <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
+                                <div 
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ 
+                                    width: `${bucket.percentage}%`, 
+                                    backgroundColor: bucket.color 
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex justify-between items-center mt-1 text-[10px]">
+                                <span className={muteTextClasses}>{bucket.percentage}% wszystkich napojów</span>
+                                {isPeak && (
+                                  <span className="text-orange-500 font-bold uppercase tracking-wider text-[9px]">Główne Okno Ryzyka</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* History Logs (Collapsible/Expandable) */}
@@ -2781,7 +3203,7 @@ export default function Page() {
               </motion.div>
             )}
 
-            {/* VIEW 3: SETTINGS (BEZ KALKULATORA OSZCZĘDNOŚCI) */}
+            {/* VIEW 3: COMPACT COLLAPSIBLE SETTINGS MENU */}
             {view === 'settings' && (
               <motion.div 
                 key="settings"
@@ -2789,283 +3211,755 @@ export default function Page() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="px-6 space-y-5"
+                className="px-6 space-y-3.5"
               >
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight">Ustawienia Wyglądu</h2>
-                  <p className={`text-xs ${muteTextClasses}`}>Dostosuj motyw i kolor wiodący aplikacji</p>
-                </div>
-
-                {/* THEME SELECTOR (CIEMNY, SZARY, JASNY) */}
-                <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Palette size={16} style={{ color: currentAccent.primary }} />
-                    <h3 className="text-sm font-bold uppercase tracking-wider">
-                      Motyw Wizualny
-                    </h3>
+                {/* Header with Quick Expand / Collapse all */}
+                <div className="flex items-end justify-between pt-1 pb-1">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Ustawienia</h2>
+                    <p className={`text-xs ${muteTextClasses}`}>Dostosuj motyw, powiadomienia i preferencje</p>
                   </div>
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Wybierz styl tła dopasowany do Twojego wzroku.
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {/* Dark Theme */}
+                  <div className="flex items-center gap-2 text-[11px] font-semibold">
                     <button
-                      onClick={() => handleThemeChange('dark')}
-                      className={`p-3.5 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
-                        theme === 'dark' 
-                          ? 'border-2 bg-zinc-950 text-white'
-                          : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                      }`}
-                      style={theme === 'dark' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
+                      type="button"
+                      onClick={expandAllSettings}
+                      className={`${muteTextClasses} hover:text-zinc-200 transition-colors px-1.5 py-0.5`}
                     >
-                      <Moon size={20} className={theme === 'dark' ? 'text-white' : 'text-zinc-500'} />
-                      <span className="text-xs font-bold">Ciemny</span>
+                      Rozwiń
                     </button>
-
-                    {/* Gray (Pośredni) Theme */}
+                    <span className={muteTextClasses}>•</span>
                     <button
-                      onClick={() => handleThemeChange('gray')}
-                      className={`p-3.5 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
-                        theme === 'gray' 
-                          ? 'border-2 bg-[#20222c] text-white'
-                          : 'bg-[#20222c]/50 border-slate-700 text-slate-400 hover:text-slate-200'
-                      }`}
-                      style={theme === 'gray' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
+                      type="button"
+                      onClick={collapseAllSettings}
+                      className={`${muteTextClasses} hover:text-zinc-200 transition-colors px-1.5 py-0.5`}
                     >
-                      <Monitor size={20} className={theme === 'gray' ? 'text-white' : 'text-slate-400'} />
-                      <span className="text-xs font-bold">Szary</span>
-                    </button>
-
-                    {/* Light Theme */}
-                    <button
-                      onClick={() => handleThemeChange('light')}
-                      className={`p-3.5 rounded-2xl border flex flex-col items-center gap-2 transition-all ${
-                        theme === 'light' 
-                          ? 'border-2 bg-white text-zinc-900'
-                          : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-zinc-900'
-                      }`}
-                      style={theme === 'light' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
-                    >
-                      <Sun size={20} className={theme === 'light' ? 'text-amber-500' : 'text-zinc-400'} />
-                      <span className="text-xs font-bold">Jasny</span>
+                      Zwiń
                     </button>
                   </div>
                 </div>
 
-                {/* ACCENT COLOR SELECTOR (KOLOR WIODĄCY) */}
-                <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles size={16} style={{ color: currentAccent.primary }} />
-                    <h3 className="text-sm font-bold uppercase tracking-wider">
-                      Kolor Wiodący
-                    </h3>
-                  </div>
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Kolor głównego pierścienia (Dni), podświetleń i odznak.
-                  </p>
-
-                  <div className="grid grid-cols-4 gap-2.5">
-                    {Object.values(ACCENT_PALETTES).map((pal) => {
-                      const isSelected = accentKey === pal.key;
-                      return (
-                        <button
-                          key={pal.key}
-                          onClick={() => handleAccentChange(pal.key)}
-                          className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all relative ${
-                            isSelected 
-                              ? 'border-2 font-bold shadow-md' 
-                              : `${innerItemBg} hover:border-zinc-500`
-                          }`}
-                          style={isSelected ? { borderColor: pal.primary } : {}}
-                        >
-                          <div 
-                            className="w-6 h-6 rounded-full flex items-center justify-center shadow-sm"
-                            style={{ backgroundColor: pal.primary }}
-                          >
-                            {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
-                          </div>
-                          <span className="text-[11px] truncate max-w-full">{pal.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* POWIADOMIENIA SYSTEMOWE (WEB NOTIFICATION API) */}
-                <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Bell size={16} style={{ color: currentAccent.primary }} />
-                      <h3 className="text-sm font-bold uppercase tracking-wider">
-                        Powiadomienia & Motywacja
-                      </h3>
-                    </div>
-                    <span 
-                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-                        notificationPermission === 'granted'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : notificationPermission === 'denied'
-                          ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                      }`}
-                    >
-                      {notificationPermission === 'granted' ? 'Aktywne' : notificationPermission === 'denied' ? 'Zablokowane' : 'Wymaga Zgody'}
-                    </span>
-                  </div>
-
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Otrzymuj natychmiastowe powiadomienia na pulpicie/telefonie, gdy osiągniesz nowy kamień milowy lub pobijesz swój rekord długości detoksu.
-                  </p>
-
-                  <div className="space-y-2.5">
-                    {notificationPermission !== 'granted' && (
-                      <button
-                        onClick={requestNotificationPermission}
-                        className="w-full py-3 px-4 rounded-2xl text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]"
-                        style={{
-                          backgroundColor: currentAccent.primary,
-                          boxShadow: `0 0 14px ${currentAccent.glow}`
-                        }}
-                      >
-                        <BellRing size={16} />
-                        Włącz powiadomienia w przeglądarce
-                      </button>
-                    )}
-
-                    <button
-                      onClick={sendTestNotification}
-                      className={`w-full py-2.5 px-4 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${innerItemBg} hover:border-zinc-500`}
-                    >
-                      <Sparkles size={15} style={{ color: currentAccent.primary }} />
-                      Wyślij testowe powiadomienie
-                    </button>
-                  </div>
-                </div>
-
-                {/* PWA & AKTUALIZACJE APLIKACJI (GITHUB & ANDROID) */}
-                <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Smartphone size={18} style={{ color: currentAccent.primary }} />
-                      <h3 className="text-sm font-bold uppercase tracking-wider">
-                        Aplikacja PWA & Wersja
-                      </h3>
-                    </div>
-                    <span 
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                      style={{
-                        backgroundColor: currentAccent.badgeBg,
-                        color: currentAccent.badgeText,
-                        borderColor: currentAccent.badgeBorder
-                      }}
-                    >
-                      v{APP_VERSION}
-                    </span>
-                  </div>
-
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Aplikacja jest przystosowana do instalacji na telefonach Android jako natywna aplikacja PWA (z własną ikonką) oraz działa w 100% offline.
-                  </p>
-
-                  {/* UPDATE BANNER IN SETTINGS IF NEW VERSION AVAILABLE */}
-                  {updateAvailable && (
-                    <div 
-                      className="p-3.5 rounded-2xl border mb-3 flex flex-col gap-2"
-                      style={{
-                        backgroundColor: currentAccent.badgeBg,
-                        borderColor: currentAccent.primary
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <ArrowUpCircle size={18} style={{ color: currentAccent.primary }} className="animate-bounce" />
-                        <span className="text-xs font-bold" style={{ color: currentAccent.badgeText }}>
-                          Dostępna jest nowsza wersja ZeroCaff!
-                        </span>
-                      </div>
-                      <p className={`text-[11px] ${subTextClasses}`}>
-                        {serverVersionInfo?.description || "Wykryto nowszą wersję na serwerze. Kliknij poniżej, aby natychmiast zaktualizować aplikację."}
-                      </p>
-                      <button
-                        onClick={applyUpdate}
-                        className="w-full py-2.5 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
-                        style={{
-                          backgroundColor: currentAccent.primary,
-                          boxShadow: `0 0 12px ${currentAccent.glow}`
-                        }}
-                      >
-                        <RefreshCw size={14} className="animate-spin" />
-                        Zaktualizuj teraz do nowej wersji
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="space-y-2.5">
-                    {/* Check for updates button */}
-                    <button
-                      onClick={() => checkForUpdate(true)}
-                      disabled={isCheckingUpdate}
-                      className={`w-full py-2.5 px-4 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${innerItemBg} hover:border-zinc-500 disabled:opacity-50`}
-                    >
-                      <RefreshCw size={14} className={isCheckingUpdate ? "animate-spin" : ""} style={{ color: currentAccent.primary }} />
-                      {isCheckingUpdate ? "Sprawdzanie serwera..." : "Sprawdź dostępność aktualizacji"}
-                    </button>
-
-                    {/* Install PWA Button */}
-                    {!isStandalone ? (
-                      <button
-                        onClick={handleInstallPWA}
-                        className="w-full py-2.5 px-4 rounded-2xl border text-xs font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+                {/* 1. ACCORDION ITEM: MOTYW WIZUALNY */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('theme')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
                         style={{
                           backgroundColor: currentAccent.badgeBg,
-                          borderColor: currentAccent.badgeBorder,
-                          color: currentAccent.primary
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
                         }}
                       >
-                        <Download size={14} />
-                        Zainstaluj aplikację na telefonie (Android)
-                      </button>
-                    ) : (
-                      <div className={`w-full py-2 px-3 rounded-2xl border text-[11px] font-semibold flex items-center justify-center gap-2 ${innerItemBg} text-emerald-400 border-emerald-500/20`}>
-                        <CheckCircle size={14} />
-                        Aplikacja działa jako zainstalowana PWA
+                        <Palette size={18} />
                       </div>
-                    )}
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Motyw Wizualny</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Styl tła i kontrastu interfejsu</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.badgeText,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        {theme === 'dark' ? 'Ciemny' : theme === 'gray' ? 'Szary' : 'Jasny'}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.theme ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
 
-                    {/* Test Update Simulator */}
-                    <button
-                      onClick={() => {
-                        setUpdateAvailable(true);
-                        setUpdateBannerDismissed(false);
-                        showToast("Włączono testowe okienko aktualizacji!");
-                      }}
-                      className={`w-full py-1.5 px-3 rounded-xl text-[10px] ${muteTextClasses} hover:text-zinc-300 transition-colors flex items-center justify-center gap-1.5`}
-                    >
-                      <Sparkles size={12} />
-                      Przetestuj okienko wykrycia nowej wersji
-                    </button>
-                  </div>
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.theme && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            Wybierz styl tła dopasowany do Twojego wzroku i oświetlenia.
+                          </p>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            {/* Dark Theme */}
+                            <button
+                              onClick={() => handleThemeChange('dark')}
+                              className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] ${
+                                theme === 'dark' 
+                                  ? 'border-2 bg-zinc-950 text-white shadow-md'
+                                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                              }`}
+                              style={theme === 'dark' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
+                            >
+                              <Moon size={18} className={theme === 'dark' ? 'text-white' : 'text-zinc-500'} />
+                              <span className="text-xs font-bold">Ciemny</span>
+                            </button>
+
+                            {/* Gray (Pośredni) Theme */}
+                            <button
+                              onClick={() => handleThemeChange('gray')}
+                              className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] ${
+                                theme === 'gray' 
+                                  ? 'border-2 bg-[#20222c] text-white shadow-md'
+                                  : 'bg-[#20222c]/50 border-slate-700 text-slate-400 hover:text-slate-200'
+                              }`}
+                              style={theme === 'gray' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
+                            >
+                              <Monitor size={18} className={theme === 'gray' ? 'text-white' : 'text-slate-400'} />
+                              <span className="text-xs font-bold">Szary</span>
+                            </button>
+
+                            {/* Light Theme */}
+                            <button
+                              onClick={() => handleThemeChange('light')}
+                              className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] ${
+                                theme === 'light' 
+                                  ? 'border-2 bg-white text-zinc-900 shadow-md'
+                                  : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-zinc-900'
+                              }`}
+                              style={theme === 'light' ? { borderColor: currentAccent.primary, boxShadow: `0 0 12px ${currentAccent.glow}` } : {}}
+                            >
+                              <Sun size={18} className={theme === 'light' ? 'text-amber-500' : 'text-zinc-400'} />
+                              <span className="text-xs font-bold">Jasny</span>
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* DANGER ZONE (RESET DATA) */}
-                <div className={`border border-red-500/20 rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
-                  <div className="flex items-center gap-2 mb-2 text-red-500">
-                    <AlertTriangle size={16} />
-                    <h3 className="text-sm font-bold uppercase tracking-wider">
-                      Strefa Danych
-                    </h3>
-                  </div>
-                  <p className={`text-xs mb-4 ${muteTextClasses}`}>
-                    Możesz wyczyścić historię wpisów lub zresetować aplikację do stanu początkowego.
-                  </p>
+                {/* Subtle horizontal divider between Theme and Accent */}
+                <div className="flex items-center px-4 py-0.5">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/20 to-transparent" />
+                </div>
 
+                {/* 2. ACCORDION ITEM: KOLOR WIODĄCY (Z NOWYMI KOLORAMI) */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
                   <button
-                    onClick={clearAllData}
-                    className="w-full py-3 px-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    type="button"
+                    onClick={() => toggleSettingsSection('accent')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
                   >
-                    <Trash2 size={16} />
-                    Wyczyść wszystkie dane i zresetuj aplikację
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <Sparkles size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Kolor Wiodący</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Kolor pierścienia dni, wykresów i akcentów</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border" style={{ backgroundColor: currentAccent.badgeBg, borderColor: currentAccent.badgeBorder }}>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: currentAccent.primary }} />
+                        <span className="text-[10px] font-bold" style={{ color: currentAccent.badgeText }}>
+                          {currentAccent.name}
+                        </span>
+                      </div>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.accent ? 'rotate-180 text-zinc-200' : ''}`} 
+                        />
+                    </div>
                   </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.accent && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            Wybierz jeden z 10 wyrazistych wariantów kolorystycznych:
+                          </p>
+
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {Object.values(ACCENT_PALETTES).map((pal) => {
+                              const isSelected = accentKey === pal.key;
+                              return (
+                                <button
+                                  key={pal.key}
+                                  id={`accent-btn-${pal.key}`}
+                                  onClick={() => handleAccentChange(pal.key)}
+                                  className={`p-2.5 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all duration-200 hover:scale-[1.05] active:scale-[0.95] relative ${
+                                    isSelected 
+                                      ? 'border-2 font-bold shadow-md' 
+                                      : `${innerItemBg} hover:border-zinc-500`
+                                  }`}
+                                  style={isSelected ? { borderColor: pal.primary } : {}}
+                                >
+                                  <div 
+                                    className="w-5 h-5 rounded-full flex items-center justify-center shadow-sm"
+                                    style={{ 
+                                      background: pal.key === 'sunset' 
+                                        ? 'linear-gradient(135deg, #7c3aed 0%, #d946ef 50%, #f59e0b 100%)' 
+                                        : pal.primary 
+                                    }}
+                                  >
+                                    {isSelected && <Check size={12} className="text-white" strokeWidth={3} />}
+                                  </div>
+                                  <span className="text-[11px] truncate max-w-full font-medium">{pal.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Subtle horizontal divider between Accent and Milestone */}
+                <div className="flex items-center px-4 py-0.5">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/20 to-transparent" />
+                </div>
+
+                {/* 3. ACCORDION ITEM: KARTA KAMIENIA MILOWEGO */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('milestone')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <Trophy size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Kamienie Milowe</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Karta aktywnego celu na ekranie głównym</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          !showMilestoneCard ? (theme === 'light' ? 'bg-zinc-100 border-zinc-300 text-zinc-600' : 'bg-zinc-800 border-zinc-700 text-zinc-400') : ''
+                        }`}
+                        style={showMilestoneCard ? {
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder,
+                        } : {}}
+                      >
+                        {showMilestoneCard ? 'Widoczna' : 'Ukryta'}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.milestone ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.milestone && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            Steruj widocznością dużej karty aktywnego kamienia milowego i paska postępu na ekranie głównym.
+                          </p>
+
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleShowMilestoneCard(true)}
+                              className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                                showMilestoneCard 
+                                  ? 'border-2 text-white shadow-md' 
+                                  : `${innerItemBg} hover:border-zinc-500`
+                              }`}
+                              style={showMilestoneCard ? { backgroundColor: currentAccent.primary, borderColor: currentAccent.primary } : {}}
+                            >
+                              <Eye size={14} />
+                              <span>Włączona</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleShowMilestoneCard(false)}
+                              className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                                !showMilestoneCard 
+                                  ? 'border-2 border-zinc-500 font-bold bg-zinc-800/80 text-white' 
+                                  : `${innerItemBg} hover:border-zinc-500`
+                              }`}
+                            >
+                              <EyeOff size={14} />
+                              <span>Ukryta</span>
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 4. ACCORDION ITEM: POWIADOMIENIA SYSTEMOWE */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('notifications')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <Bell size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Powiadomienia</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Alerty o kamieniach i rekordach detoksu</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          notificationPermission === 'granted'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : notificationPermission === 'denied'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }`}
+                      >
+                        {notificationPermission === 'granted' ? 'Aktywne' : notificationPermission === 'denied' ? 'Zablokowane' : 'Wymaga Zgody'}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.notifications ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.notifications && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            Otrzymuj natychmiastowe powiadomienia na telefonie lub komputerze, gdy osiągniesz nowy kamień milowy lub pobijesz swój rekord.
+                          </p>
+
+                          <div className="space-y-2">
+                            {notificationPermission !== 'granted' && (
+                              <button
+                                onClick={requestNotificationPermission}
+                                className="w-full py-2.5 px-3.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                                style={{
+                                  backgroundColor: currentAccent.primary,
+                                  boxShadow: `0 0 12px ${currentAccent.glow}`
+                                }}
+                              >
+                                <BellRing size={15} />
+                                Włącz powiadomienia w przeglądarce
+                              </button>
+                            )}
+
+                            <button
+                              onClick={sendTestNotification}
+                              className={`w-full py-2 px-3.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${innerItemBg} hover:border-zinc-500`}
+                            >
+                              <Sparkles size={14} style={{ color: currentAccent.primary }} />
+                              Wyślij testowe powiadomienie
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 5. ACCORDION ITEM: PWA & AKTUALIZACJE */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('pwa')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <Smartphone size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Aplikacja & PWA</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Wersja v{APP_VERSION} • 100% Offline</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.badgeText,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        v{APP_VERSION}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.pwa ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.pwa && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            ZeroCaff działa w pełni offline i jest przystosowana do instalacji na telefonie jako natywna aplikacja PWA.
+                          </p>
+
+                          {updateAvailable && (
+                            <div 
+                              className="p-3 rounded-xl border flex flex-col gap-2"
+                              style={{
+                                backgroundColor: currentAccent.badgeBg,
+                                borderColor: currentAccent.primary
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <ArrowUpCircle size={16} style={{ color: currentAccent.primary }} className="animate-bounce" />
+                                <span className="text-xs font-bold" style={{ color: currentAccent.badgeText }}>
+                                  Dostępna nowa wersja!
+                                </span>
+                              </div>
+                              <p className={`text-[11px] ${subTextClasses}`}>
+                                {serverVersionInfo?.description || "Kliknij poniżej, aby natychmiast zaktualizować aplikację."}
+                              </p>
+                              <button
+                                onClick={applyUpdate}
+                                className="w-full py-2 px-3 rounded-lg text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-95"
+                                style={{
+                                  backgroundColor: currentAccent.primary,
+                                  boxShadow: `0 0 10px ${currentAccent.glow}`
+                                }}
+                              >
+                                <RefreshCw size={13} className="animate-spin" />
+                                Zaktualizuj teraz
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => checkForUpdate(true)}
+                              disabled={isCheckingUpdate}
+                              className={`w-full py-2 px-3.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${innerItemBg} hover:border-zinc-500 disabled:opacity-50`}
+                            >
+                              <RefreshCw size={13} className={isCheckingUpdate ? "animate-spin" : ""} style={{ color: currentAccent.primary }} />
+                              {isCheckingUpdate ? "Sprawdzanie serwera..." : "Sprawdź dostępność aktualizacji"}
+                            </button>
+
+                            {!isStandalone ? (
+                              <button
+                                onClick={handleInstallPWA}
+                                className="w-full py-2 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] hover:opacity-90 active:scale-95"
+                                style={{
+                                  backgroundColor: currentAccent.badgeBg,
+                                  borderColor: currentAccent.badgeBorder,
+                                  color: currentAccent.primary
+                                }}
+                              >
+                                <Download size={14} />
+                                Zainstaluj aplikację na telefonie (Android)
+                              </button>
+                            ) : (
+                              <div className={`w-full py-2 px-3 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-2 ${innerItemBg} text-emerald-400 border-emerald-500/20`}>
+                                <CheckCircle size={14} />
+                                Aplikacja działa jako zainstalowana PWA
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setUpdateAvailable(true);
+                                setUpdateBannerDismissed(false);
+                                showToast("Włączono testowe okienko aktualizacji!");
+                              }}
+                              className={`w-full py-1.5 px-3 rounded-lg text-[10px] ${muteTextClasses} hover:text-zinc-300 transition-all duration-200 hover:scale-[1.01] flex items-center justify-center gap-1.5`}
+                            >
+                              <Sparkles size={11} />
+                              Przetestuj okienko wykrycia nowej wersji
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 6. ACCORDION ITEM: PUNKT STARTOWY STATYSTYK */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('statsStart')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <CalendarClock size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight truncate">Punkt Startowy Statystyk</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Zakres zliczania czystych dni i średnich</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.badgeText,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        {totalTrackedDaysCount} {totalTrackedDaysCount === 1 ? 'dzień' : 'dni'}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.statsStart ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.statsStart && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses}`}>
+                            Określa, od jakiej daty aplikacja zlicza Twoje statystyki, czyste dni i średnie bez potrzeby cofania się o 60 dni.
+                          </p>
+
+                          <div className={`p-3 rounded-2xl border flex items-center justify-between ${innerItemBg}`}>
+                            <div>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider block ${muteTextClasses}`}>
+                                Aktualny start
+                              </span>
+                              <span className="text-xs font-bold">
+                                {format(new Date(statsStartDate), 'd MMMM yyyy, HH:mm', { locale: pl })}
+                              </span>
+                            </div>
+                            <span 
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                              style={{
+                                backgroundColor: currentAccent.badgeBg,
+                                color: currentAccent.badgeText,
+                                borderColor: currentAccent.badgeBorder
+                              }}
+                            >
+                              {totalTrackedDaysCount} dni
+                            </span>
+                          </div>
+
+                          <div className="space-y-2">
+                            <button
+                              onClick={() => handleResetStatsToToday(false)}
+                              className="w-full py-2.5 px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                              style={{ backgroundColor: currentAccent.primary }}
+                            >
+                              <Sparkles size={15} />
+                              Licz statystyki od dziś (00:00)
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handleResetStatsToToday(true)}
+                                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${innerItemBg} hover:border-zinc-500`}
+                                title="Zresetuj punkt startowy oraz timer główny do teraz"
+                              >
+                                <RotateCcw size={13} style={{ color: currentAccent.primary }} />
+                                <span>Od teraz + timer</span>
+                              </button>
+
+                              <button
+                                onClick={handleOpenStartDateModal}
+                                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 ${innerItemBg} hover:border-zinc-500`}
+                              >
+                                <Calendar size={13} style={{ color: currentAccent.primary }} />
+                                <span>Własna data</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 7. ACCORDION ITEM: ZARZĄDZANIE DANYMI I RESET */}
+                <div className={`border border-red-500/25 rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('danger')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border bg-red-500/10 text-red-500 border-red-500/25">
+                        <AlertTriangle size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold tracking-tight text-red-500 truncate">Zarządzanie Danymi</h3>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Wyczyść historię, zresetuj licznik lub pamięć</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-red-500/10 text-red-400 border-red-500/30">
+                        Reset
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.danger ? 'rotate-180 text-red-400' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.danger && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-red-500/20 space-y-3">
+                          <p className={`text-xs ${muteTextClasses} leading-relaxed`}>
+                            Wybierz precyzyjny zakres resetu danych w aplikacji:
+                          </p>
+
+                          <div className="space-y-2">
+                            {/* Opcja 1: Wyczyść tylko wpisy / napoje */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResetModal('logs')}
+                              className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] ${innerItemBg} hover:border-amber-500/50`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
+                                  <History size={14} />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold truncate">Wyczyść historię wpisów ({logs.length})</div>
+                                  <div className={`text-[10px] truncate ${muteTextClasses}`}>Usuwa napoje, zachowuje timer i motyw</div>
+                                </div>
+                              </div>
+                              <ChevronRight size={13} className={muteTextClasses} />
+                            </button>
+
+                            {/* Opcja 2: Zresetuj licznik abstynencji */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResetModal('timer')}
+                              className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] ${innerItemBg} hover:border-orange-500/50`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 border border-orange-500/20">
+                                  <RotateCcw size={14} />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold truncate">Zresetuj licznik abstynencji (0h)</div>
+                                  <div className={`text-[10px] truncate ${muteTextClasses}`}>Zeruje czas od ostatniej kofeiny do teraz</div>
+                                </div>
+                              </div>
+                              <ChevronRight size={13} className={muteTextClasses} />
+                            </button>
+
+                            {/* Opcja 3: Pełny reset fabryczny */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenResetModal('factory')}
+                              className="w-full p-3 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-500 flex items-center justify-between gap-2.5 transition-all duration-200 hover:scale-[1.01] active:scale-[0.98]"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-xl bg-red-500/20 text-red-500 flex items-center justify-center shrink-0 border border-red-500/30">
+                                  <Trash2 size={14} />
+                                </div>
+                                <div className="min-w-0 text-left">
+                                  <div className="text-xs font-bold truncate">Pełny reset do stanu fabrycznego</div>
+                                  <div className="text-[10px] text-red-400/80 truncate">Czyści wszystko: logi, licznik, pamięć i motyw</div>
+                                </div>
+                              </div>
+                              <ChevronRight size={13} className="text-red-500/70" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
               </motion.div>
@@ -3554,69 +4448,118 @@ export default function Page() {
           )}
         </AnimatePresence>
 
-        {/* ROZBUDOWANY MODAL SZCZEGÓŁÓW KAMIENIA MILOWEGO (ROZSZERZONE INFORMACJE) */}
+        {/* ROZBUDOWANY MODAL SZCZEGÓŁÓW KAMIENIA MILOWEGO (GEST PRZECIĄGNIĘCIA W DÓŁ + JEDEN PRZYCISK ZAMKNIJ) */}
         <AnimatePresence>
           {selectedMilestone && (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              onClick={handleCloseMilestone}
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
             >
               <motion.div 
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0.05, bottom: 0.7 }}
+                onDragEnd={(_e, info) => {
+                  if (info.offset.y > 60 || info.velocity.y > 250) {
+                    handleCloseMilestone();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`w-full max-w-md border-t sm:rounded-3xl sm:border p-6 pb-8 sm:pb-6 shadow-2xl relative max-h-[90vh] overflow-y-auto ${modalBg}`}
+                className={`w-full max-w-md border-t sm:rounded-3xl sm:border p-5 pb-8 sm:pb-6 shadow-2xl relative max-h-[92vh] overflow-y-auto ${modalBg}`}
               >
-                {/* Header with Icon, Name & Status */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-13 h-13 rounded-2xl flex items-center justify-center border text-xl font-black shrink-0"
-                      style={{
-                        backgroundColor: currentAccent.badgeBg,
-                        color: currentAccent.primary,
-                        borderColor: currentAccent.badgeBorder
-                      }}
-                    >
-                      {selectedMilestone.code}
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
-                        {selectedMilestone.phase}
-                      </span>
-                      <h2 className="text-xl font-bold tracking-tight">{selectedMilestone.name}</h2>
-                      <span 
-                        className="text-xs font-semibold"
-                        style={{ color: currentAccent.primary }}
-                      >
-                        {selectedMilestone.benefit}
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedMilestone(null)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${innerItemBg}`}
-                  >
-                    <X size={18} />
-                  </button>
+                {/* Visual drag handle for swipe-down to dismiss on touchscreens */}
+                <div className="flex flex-col items-center justify-center pt-0 pb-3 cursor-grab active:cursor-grabbing select-none">
+                  <div className="w-12 h-1.5 rounded-full bg-zinc-500/40 hover:bg-zinc-400/60 transition-colors" />
                 </div>
 
-                {/* Unlocked Status Badge */}
-                <div className="flex items-center justify-between text-xs mb-4 p-3 rounded-2xl border backdrop-blur-sm bg-black/20">
-                  <span className={muteTextClasses}>Status etapu:</span>
-                  {diffSeconds >= selectedMilestone.seconds ? (
-                    <span className="font-bold flex items-center gap-1.5" style={{ color: currentAccent.primary }}>
-                      <CheckCircle2 size={15} /> Zdobyte! Jesteś wolny od kofeiny
+                {/* Header with Icon, Name & Phase */}
+                <div className="flex items-start gap-3.5 mb-4">
+                  <div 
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center border text-2xl font-black shrink-0 shadow-md"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      color: currentAccent.primary,
+                      borderColor: currentAccent.badgeBorder
+                    }}
+                  >
+                    {selectedMilestone.code}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
+                      {selectedMilestone.phase}
                     </span>
-                  ) : (
-                    <span className="text-cyan-400 font-bold flex items-center gap-1.5">
-                      <Clock size={14} /> Pozostało: {Math.ceil((selectedMilestone.seconds - diffSeconds) / 3600)} godz.
+                    <h2 className="text-xl font-bold tracking-tight">{selectedMilestone.name}</h2>
+                    <span 
+                      className="text-xs font-semibold"
+                      style={{ color: currentAccent.primary }}
+                    >
+                      {selectedMilestone.benefit}
                     </span>
-                  )}
+                  </div>
                 </div>
+
+                {/* COUNTDOWN & MOTIVATION TARGET CARD */}
+                {(() => {
+                  const info = getMilestoneCountdownInfo(selectedMilestone.seconds, diffSeconds, lastIntake);
+                  return (
+                    <div className={`p-4 rounded-2xl border mb-5 backdrop-blur-sm ${innerItemBg}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                          {info.isUnlocked ? 'Status Osiągnięcia' : 'Czas do Osiągnięcia Kamienia'}
+                        </span>
+                        <span 
+                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                            info.isUnlocked 
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                          }`}
+                        >
+                          {info.badgeText}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar towards this specific milestone */}
+                      <div className={`w-full h-3.5 rounded-full p-0.5 border relative mb-2.5 flex items-center ${theme === 'light' ? 'bg-zinc-200 border-zinc-300' : 'bg-black/40 border-zinc-800'}`}>
+                        <div 
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${info.progressPercent}%`,
+                            backgroundColor: info.isUnlocked ? '#10b981' : currentAccent.primary,
+                            boxShadow: `0 0 10px ${info.isUnlocked ? 'rgba(16,185,129,0.4)' : currentAccent.glow}`
+                          }}
+                        />
+                        <span className="absolute right-2 text-[9px] font-extrabold text-zinc-400">
+                          {info.progressPercent}%
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className={muteTextClasses}>
+                          {info.isUnlocked ? 'Wymagany czas:' : 'Pozostało do celu:'}
+                        </span>
+                        <span className="font-bold">
+                          {info.isUnlocked ? formatDuration(selectedMilestone.seconds * 1000) : info.timeRemainingStr}
+                        </span>
+                      </div>
+
+                      {!info.isUnlocked && (
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-zinc-500/15 mt-2">
+                          <span className={muteTextClasses}>Przewidywana data zaliczenia:</span>
+                          <span className="font-bold text-cyan-400">
+                            {info.targetDateStr}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* 4 DETAILED EDUCATIONAL & PHYSIOLOGICAL ACCORDIONS/BLOCKS */}
                 <div className="space-y-3 mb-6">
@@ -3667,12 +4610,202 @@ export default function Page() {
 
                 </div>
 
+                {/* SINGLE ACTION BUTTON TO CLOSE MODAL */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseMilestone}
+                    className="w-full py-3.5 px-6 rounded-2xl text-white font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                    style={{ 
+                      backgroundColor: currentAccent.primary,
+                      boxShadow: `0 0 16px ${currentAccent.glow}`
+                    }}
+                  >
+                    <span>Zamknij</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: WYBÓR PUNKTU STARTOWEGO STATYSTYK (RESET OD DZIŚ LUB WŁASNA DATA) */}
+        <AnimatePresence>
+          {showStartDateModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseStartDateModal}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+            >
+              <motion.div 
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0.05, bottom: 0.7 }}
+                onDragEnd={(_e, info) => {
+                  if (info.offset.y > 100 || info.velocity.y > 400) {
+                    handleCloseStartDateModal();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className={`w-full max-w-md border-t sm:rounded-3xl sm:border p-5 pb-8 sm:pb-6 shadow-2xl relative max-h-[92vh] overflow-y-auto ${modalBg}`}
+              >
+                {/* Visual drag handle for swipe-down to dismiss */}
+                <div className="w-12 h-1.5 rounded-full bg-zinc-500/30 mx-auto mb-3 cursor-grab active:cursor-grabbing" />
+
+                {/* Header with Back button and Close */}
+                <div className="flex justify-between items-center mb-4 pb-2 border-b border-zinc-500/15">
+                  <button 
+                    type="button"
+                    onClick={handleCloseStartDateModal}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${innerItemBg} hover:border-zinc-500 active:scale-95`}
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Wróć</span>
+                  </button>
+
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                    Punkt Startowy
+                  </span>
+
+                  <button 
+                    type="button"
+                    onClick={handleCloseStartDateModal}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${innerItemBg} hover:opacity-80 transition-opacity`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 mb-3">
+                  <div 
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 shadow-md"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      color: currentAccent.primary,
+                      borderColor: currentAccent.badgeBorder
+                    }}
+                  >
+                    <CalendarClock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold">Od kiedy zliczać statystyki?</h3>
+                    <p className={`text-xs ${muteTextClasses}`}>
+                      Aplikacja wyliczy czyste dni i wykresy od wskazanego momentu.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Current Start Date Info Box */}
+                <div className={`p-3.5 rounded-2xl border mb-4 text-xs ${innerItemBg}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
+                    Obecnie ustawiony punkt startowy:
+                  </span>
+                  <span className="font-bold text-sm" style={{ color: currentAccent.primary }}>
+                    {format(new Date(statsStartDate), 'EEEE, d MMMM yyyy', { locale: pl })} (godz. {format(new Date(statsStartDate), 'HH:mm')})
+                  </span>
+                </div>
+
+                {/* 1-Click Fast Presets */}
+                <div className="space-y-2 mb-5">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block px-1 ${muteTextClasses}`}>
+                    Szybkie opcje:
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handleResetStatsToToday(false)}
+                    className="w-full p-3.5 rounded-2xl text-left border flex items-center justify-between transition-all group active:scale-[0.98]"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      borderColor: currentAccent.primary
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles size={18} style={{ color: currentAccent.primary }} />
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: currentAccent.badgeText }}>
+                          Licz wszystko od dziś (00:00)
+                        </p>
+                        <p className={`text-[11px] ${subTextClasses}`}>
+                          Zaczyna statystyki od początku dzisiejszego dnia
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: currentAccent.primary }} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleResetStatsToToday(true)}
+                    className={`w-full p-3 rounded-2xl text-left border flex items-center justify-between transition-all ${innerItemBg} hover:border-zinc-500 active:scale-[0.98]`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <RotateCcw size={16} style={{ color: currentAccent.primary }} />
+                      <div>
+                        <p className="text-xs font-semibold">Od teraz + reset timera</p>
+                        <p className={`text-[10px] ${muteTextClasses}`}>
+                          Zeruje główny licznik i zaczyna czystość od tej chwili
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className={muteTextClasses} />
+                  </button>
+                </div>
+
+                {/* Custom Date & Hour Picker Form */}
+                <div className={`p-4 rounded-2xl border mb-5 ${innerItemBg}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block mb-3 ${muteTextClasses}`}>
+                    Lub wybierz dokładną datę i godzinę:
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
+                        Data startu
+                      </label>
+                      <input 
+                        type="date"
+                        value={customStartInputDate}
+                        onChange={(e) => setCustomStartInputDate(e.target.value)}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${muteTextClasses}`}>
+                        Godzina
+                      </label>
+                      <input 
+                        type="time"
+                        value={customStartInputHour}
+                        onChange={(e) => setCustomStartInputHour(e.target.value)}
+                        className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none ${cardClasses}`}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveCustomStartDate}
+                    disabled={!customStartInputDate}
+                    className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+                    style={{ backgroundColor: currentAccent.primary }}
+                  >
+                    Zapisz wybrany punkt startowy
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => setSelectedMilestone(null)}
-                  className="w-full py-3.5 rounded-2xl text-white font-bold text-sm shadow-md transition-all active:scale-[0.98]"
-                  style={{ backgroundColor: currentAccent.primary }}
+                  type="button"
+                  onClick={handleCloseStartDateModal}
+                  className={`w-full py-3 rounded-2xl border text-xs font-semibold ${innerItemBg} hover:border-zinc-500`}
                 >
-                  Rozumiem, wracam do licznika
+                  Anuluj i zamknij
                 </button>
               </motion.div>
             </motion.div>
@@ -3818,66 +4951,83 @@ export default function Page() {
           )}
         </AnimatePresence>
 
-        {/* EXIT CONFIRMATION MODAL (SYSTEM BACK BUTTON HANDLER) */}
+        {/* RESET / CLEAR DATA CONFIRMATION MODAL */}
         <AnimatePresence>
-          {showExitConfirmModal && (
+          {showResetConfirmModal && resetModalType && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              onClick={handleCloseResetModal}
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
+                initial={{ scale: 0.92, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
+                exit={{ scale: 0.92, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
                 className={`w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${modalBg}`}
               >
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div 
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm"
-                    style={{
-                      backgroundColor: currentAccent.badgeBg,
-                      borderColor: currentAccent.badgeBorder,
-                      color: currentAccent.primary
-                    }}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm ${
+                      resetModalType === 'factory' 
+                        ? 'bg-red-500/15 border-red-500/30 text-red-500' 
+                        : resetModalType === 'logs'
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-500'
+                        : 'bg-orange-500/15 border-orange-500/30 text-orange-500'
+                    }`}
                   >
-                    <LogOut size={22} />
+                    {resetModalType === 'factory' && <Trash2 size={24} />}
+                    {resetModalType === 'logs' && <History size={24} />}
+                    {resetModalType === 'timer' && <RotateCcw size={24} />}
                   </div>
-                  
+
                   <div>
-                    <h3 className="text-lg font-bold tracking-tight">Czy chcesz wyjść z aplikacji?</h3>
-                    <p className={`text-xs mt-1.5 leading-relaxed ${subTextClasses}`}>
-                      Twój licznik detoksu i postępy działają nieprzerwanie w tle.
+                    <h3 className="text-lg font-bold tracking-tight">
+                      {resetModalType === 'factory' && 'Zresetować do ustawień fabrycznych?'}
+                      {resetModalType === 'logs' && 'Wyczyścić historię wpisów?'}
+                      {resetModalType === 'timer' && 'Zresetować licznik abstynencji?'}
+                    </h3>
+                    <p className={`text-xs mt-2 leading-relaxed ${subTextClasses}`}>
+                      {resetModalType === 'factory' && (
+                        'Ta operacja usunie wszystkie zalogowane napoje, zresetuje licznik i punkt startowy statystyk oraz przywróci domyślny motyw i preferencje aplikacji.'
+                      )}
+                      {resetModalType === 'logs' && (
+                        `Usuniesz wszystkie zapisane napoje (${logs.length} wpisów). Wykresy zostaną wyzerowane. Twój aktualny licznik abstynencji i motyw pozostaną bez zmian.`
+                      )}
+                      {resetModalType === 'timer' && (
+                        'Główny zegar czystości od kofeiny zostanie ustawiony na 0h 00m 00s (czas liczony od bieżącej chwili). Historia wcześniejszych wpisów nie zostanie usunięta.'
+                      )}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                  <div className="grid grid-cols-2 gap-3 w-full pt-3">
                     <button
-                      onClick={() => setShowExitConfirmModal(false)}
+                      type="button"
+                      onClick={handleCloseResetModal}
                       className={`py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 ${innerItemBg} hover:border-zinc-500`}
                     >
-                      Zostań w aplikacji
+                      Anuluj
                     </button>
-                    
+
                     <button
+                      type="button"
                       onClick={() => {
-                        setShowExitConfirmModal(false);
-                        if (typeof window !== 'undefined') {
-                          try {
-                            window.close();
-                          } catch {}
-                          // Navigate back in history if possible
-                          if (window.history.length > 1) {
-                            window.history.back();
-                          }
-                        }
+                        if (resetModalType === 'factory') executeFactoryReset();
+                        else if (resetModalType === 'logs') executeClearLogs();
+                        else if (resetModalType === 'timer') executeResetTimer();
                       }}
-                      className="py-3 rounded-2xl text-white text-xs font-bold shadow-md transition-all active:scale-95"
-                      style={{ backgroundColor: currentAccent.primary }}
+                      className={`py-3 rounded-2xl text-white text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                        resetModalType === 'factory'
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : resetModalType === 'logs'
+                          ? 'bg-amber-600 hover:bg-amber-700'
+                          : 'bg-orange-600 hover:bg-orange-700'
+                      }`}
                     >
-                      Wyjdź
+                      Potwierdź
                     </button>
                   </div>
                 </div>
