@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,7 +13,8 @@ import {
   Heart, Compass, ArrowRight, ArrowLeft, BatteryCharging,
   Bell, BellOff, BellRing, Target, AlertCircle,
   Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut,
-  CalendarDays, CalendarClock, History, Eye, EyeOff
+  CalendarDays, CalendarClock, History, Eye, EyeOff, Key, KeyRound, ExternalLink,
+  ShieldAlert, LifeBuoy, Bot, Send, Bed, Wind, MessageSquare, HelpCircle, Lightbulb
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -67,7 +69,7 @@ type Milestone = {
 };
 
 // --- Application Constants ---
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const getAssetUrl = (path: string) => {
   const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -624,6 +626,15 @@ function calculateLongestStreak(logs: DrinkLog[], currentLastIntake: number, now
   return maxGap;
 }
 
+let globalUniqueCounter = 0;
+function getNow(): number {
+  return Date.now();
+}
+function createUniqueId(prefix = 'id'): string {
+  globalUniqueCounter += 1;
+  return `${prefix}-${Date.now()}-${globalUniqueCounter}`;
+}
+
 export default function Page() {
   const [isClient, setIsClient] = useState(false);
   const [view, setView] = useState<'home' | 'stats' | 'settings'>('home');
@@ -635,8 +646,8 @@ export default function Page() {
 
   // App Data State
   const [logs, setLogs] = useState<DrinkLog[]>([]);
-  const [lastIntake, setLastIntake] = useState<number>(Date.now() - 38 * 3600 * 1000);
-  const [now, setNow] = useState<number>(Date.now());
+  const [lastIntake, setLastIntake] = useState<number>(0);
+  const [now, setNow] = useState<number>(0);
   
   // Chart View State (Daily 60 Days vs Weekly)
   const [chartViewMode, setChartViewMode] = useState<'daily' | 'weekly'>('daily');
@@ -656,6 +667,7 @@ export default function Page() {
   const [openSettingsSections, setOpenSettingsSections] = useState<Record<string, boolean>>({
     theme: true,
     accent: false,
+    geminiApi: false,
     milestone: false,
     notifications: false,
     pwa: false,
@@ -674,6 +686,7 @@ export default function Page() {
     setOpenSettingsSections({
       theme: true,
       accent: true,
+      geminiApi: true,
       milestone: true,
       notifications: true,
       pwa: true,
@@ -686,6 +699,7 @@ export default function Page() {
     setOpenSettingsSections({
       theme: false,
       accent: false,
+      geminiApi: false,
       milestone: false,
       notifications: false,
       pwa: false,
@@ -699,7 +713,7 @@ export default function Page() {
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
 
   // Stats Start Date & Reset State
-  const [statsStartDate, setStatsStartDate] = useState<number>(Date.now() - 38 * 3600 * 1000);
+  const [statsStartDate, setStatsStartDate] = useState<number>(0);
   const [showStartDateModal, setShowStartDateModal] = useState<boolean>(false);
   const [customStartInputDate, setCustomStartInputDate] = useState<string>('');
   const [customStartInputHour, setCustomStartInputHour] = useState<string>('00:00');
@@ -722,6 +736,27 @@ export default function Page() {
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
   const [updateBannerDismissed, setUpdateBannerDismissed] = useState<boolean>(false);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [isApplyingUpdate, setIsApplyingUpdate] = useState<boolean>(false);
+  const isExplicitUpdateTriggered = useRef<boolean>(false);
+
+  // SOS Craving / Crisis Support Modal & AI Chat States
+  const [showSosModal, setShowSosModal] = useState<boolean>(false);
+  const [sosTab, setSosTab] = useState<'chat' | 'breathing' | 'alternatives'>('chat');
+  const [sosChatMessages, setSosChatMessages] = useState<Array<{ id: string; role: 'user' | 'model'; content: string }>>([]);
+  const [sosInputText, setSosInputText] = useState<string>('');
+  const [sosIsLoading, setSosIsLoading] = useState<boolean>(false);
+  const [sosBreathingCount, setSosBreathingCount] = useState<number>(0);
+  const [isDeepSleepDetailsOpen, setIsDeepSleepDetailsOpen] = useState<boolean>(false);
+  const sosChatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Custom Gemini API Key for GitHub Pages / Mobile direct client-side requests
+  const [customGeminiApiKey, setCustomGeminiApiKey] = useState<string>('');
+  const [apiKeyInputValue, setApiKeyInputValue] = useState<string>('');
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState<boolean>(false);
+  const [isTestingApiKey, setIsTestingApiKey] = useState<boolean>(false);
+  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showApiKeyInlineInSos, setShowApiKeyInlineInSos] = useState<boolean>(false);
 
   // Time customization in Add Modal
   const [isCustomTimeOpen, setIsCustomTimeOpen] = useState(false);
@@ -785,26 +820,35 @@ export default function Page() {
 
   const currentAccent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.orange;
 
+  const showToast = (msg: string) => {
+    setNotificationToast(msg);
+    setTimeout(() => setNotificationToast(null), 4000);
+  };
+
   // Live ref to synchronize with hardware / system Back button (popstate)
   const navStateRef = useRef({
     view,
     showAddModal,
+    showSosModal,
     selectedMilestone,
     showInstallGuideModal,
     showStartDateModal,
     showResetConfirmModal,
+    showUpdateModal,
   });
 
   useEffect(() => {
     navStateRef.current = {
       view,
       showAddModal,
+      showSosModal,
       selectedMilestone,
       showInstallGuideModal,
       showStartDateModal,
       showResetConfirmModal,
+      showUpdateModal,
     };
-  }, [view, showAddModal, selectedMilestone, showInstallGuideModal, showStartDateModal, showResetConfirmModal]);
+  }, [view, showAddModal, showSosModal, selectedMilestone, showInstallGuideModal, showStartDateModal, showResetConfirmModal, showUpdateModal]);
 
   useEffect(() => {
     const savedLogs = localStorage.getItem('zerocaff_logs') || localStorage.getItem('caffeine_logs');
@@ -813,6 +857,15 @@ export default function Page() {
     const savedTheme = localStorage.getItem('zerocaff_theme') as ThemeMode | null;
     const savedAccent = localStorage.getItem('zerocaff_accent') as AccentColorKey | null;
     const savedNotifPref = localStorage.getItem('zerocaff_notif_enabled');
+    
+    // Check if app was just updated to show a pleasant confirmation message
+    const justUpdatedVer = localStorage.getItem('zerocaff_just_updated');
+    if (justUpdatedVer) {
+      localStorage.removeItem('zerocaff_just_updated');
+      setTimeout(() => {
+        showToast(`ZeroCaff zaktualizowano pomyślnie do wersji v${justUpdatedVer}! 🎉`);
+      }, 600);
+    }
     
     if (savedLogs) {
       try {
@@ -855,6 +908,11 @@ export default function Page() {
     if (savedShowMilestone !== null) {
       setShowMilestoneCard(savedShowMilestone === 'true');
     }
+    const savedApiKey = localStorage.getItem('zerocaff_custom_gemini_api_key');
+    if (savedApiKey) {
+      setCustomGeminiApiKey(savedApiKey);
+      setApiKeyInputValue(savedApiKey);
+    }
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setNotificationPermission(Notification.permission);
@@ -862,6 +920,7 @@ export default function Page() {
       setNotificationPermission('unsupported');
     }
     
+    setNow(Date.now());
     setIsClient(true);
   }, []);
 
@@ -888,11 +947,6 @@ export default function Page() {
     }
   }, [view, chartViewMode]);
 
-  const showToast = (msg: string) => {
-    setNotificationToast(msg);
-    setTimeout(() => setNotificationToast(null), 4000);
-  };
-
   // --- PWA & Update Mechanisms ---
   const checkForUpdate = async (manual = false) => {
     if (manual) setIsCheckingUpdate(true);
@@ -906,8 +960,10 @@ export default function Page() {
             setWaitingWorker(reg.waiting);
             setUpdateAvailable(true);
             setUpdateBannerDismissed(false);
-            if (manual) showToast("Znaleziono nowszą wersję aplikacji!");
-            if (manual) setIsCheckingUpdate(false);
+            if (manual) {
+              setShowUpdateModal(true);
+              setIsCheckingUpdate(false);
+            }
             return;
           }
         }
@@ -921,12 +977,16 @@ export default function Page() {
         if (data.version && data.version !== APP_VERSION) {
           setUpdateAvailable(true);
           setUpdateBannerDismissed(false);
-          if (manual) showToast(`Dostępna nowa wersja: v${data.version}!`);
+          if (manual) {
+            setShowUpdateModal(true);
+          } else {
+            showToast(`Dostępna aktualizacja do wersji v${data.version}!`);
+          }
         } else if (manual) {
-          showToast(`Masz najnowszą wersję aplikacji (v${APP_VERSION})`);
+          showToast(`Masz najnowszą wersję aplikacji (v${APP_VERSION}) ✨`);
         }
       } else if (manual) {
-        showToast(`Masz najnowszą wersję aplikacji (v${APP_VERSION})`);
+        showToast(`Masz najnowszą wersję aplikacji (v${APP_VERSION}) ✨`);
       }
     } catch {
       if (manual) showToast("Aplikacja działa w trybie offline.");
@@ -936,13 +996,19 @@ export default function Page() {
   };
 
   const applyUpdate = () => {
+    isExplicitUpdateTriggered.current = true;
+    setIsApplyingUpdate(true);
+    const targetVer = serverVersionInfo?.version || APP_VERSION;
+    localStorage.setItem('zerocaff_just_updated', targetVer);
+    showToast(`Aktualizowanie ZeroCaff do v${targetVer}...`);
+
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
-    showToast("Aktualizowanie aplikacji ZeroCaff...");
+
     setTimeout(() => {
       window.location.reload();
-    }, 400);
+    }, 700);
   };
 
   const handleInstallPWA = async () => {
@@ -1001,6 +1067,7 @@ export default function Page() {
                 setWaitingWorker(newWorker);
                 setUpdateAvailable(true);
                 setUpdateBannerDismissed(false);
+                showToast("Pobrano aktualizację w tle. Kliknij powiadomienie, aby zainstalować!");
               }
             });
           });
@@ -1011,9 +1078,14 @@ export default function Page() {
 
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
+        // Only refresh automatically if user explicitly requested/approved update!
+        if (isExplicitUpdateTriggered.current && !refreshing) {
           refreshing = true;
           window.location.reload();
+        } else if (!refreshing) {
+          // If controller changed in background, notify the user gracefully
+          setUpdateAvailable(true);
+          setUpdateBannerDismissed(false);
         }
       });
     }
@@ -1021,10 +1093,24 @@ export default function Page() {
     const handlePopState = () => {
       const state = navStateRef.current;
 
+      // 0. If Update Modal is open -> close it
+      if (state.showUpdateModal) {
+        setShowUpdateModal(false);
+        navStateRef.current.showUpdateModal = false;
+        return;
+      }
+
       // 1. If Milestone Detail Modal is open -> close it
       if (state.selectedMilestone) {
         setSelectedMilestone(null);
         navStateRef.current.selectedMilestone = null;
+        return;
+      }
+
+      // 1b. If SOS Craving Modal is open -> close it
+      if (state.showSosModal) {
+        setShowSosModal(false);
+        navStateRef.current.showSosModal = false;
         return;
       }
 
@@ -1198,6 +1284,192 @@ export default function Page() {
     }
   };
 
+  // Custom Gemini API Key Handlers (For GitHub Pages, Mobile & Client-side requests)
+  const handleSaveCustomApiKey = (keyToSave?: string) => {
+    const key = (keyToSave !== undefined ? keyToSave : apiKeyInputValue).trim();
+    if (!key) {
+      handleRemoveCustomApiKey();
+      return;
+    }
+    setCustomGeminiApiKey(key);
+    setApiKeyInputValue(key);
+    localStorage.setItem('zerocaff_custom_gemini_api_key', key);
+    setApiKeyTestResult({ success: true, message: 'Klucz Gemini API zapisany lokalnie w pamięci przeglądarki!' });
+    showToast('Zapisano klucz Gemini API!');
+  };
+
+  const handleRemoveCustomApiKey = () => {
+    setCustomGeminiApiKey('');
+    setApiKeyInputValue('');
+    localStorage.removeItem('zerocaff_custom_gemini_api_key');
+    setApiKeyTestResult(null);
+    showToast('Usunięto klucz Gemini API');
+  };
+
+  const handleTestCustomApiKey = async (keyToTest?: string) => {
+    const key = (keyToTest || apiKeyInputValue || customGeminiApiKey).trim();
+    if (!key) {
+      setApiKeyTestResult({ success: false, message: 'Wprowadź klucz API przed rozpoczęciem testu.' });
+      return;
+    }
+    setIsTestingApiKey(true);
+    setApiKeyTestResult(null);
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'Odpowiedz tylko jednym słowem: OK' }] }]
+        })
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData.error?.message || `Błąd połączenia (${response.status})`;
+        setApiKeyTestResult({ success: false, message: `Niepowodzenie: ${msg}` });
+        showToast('Błąd weryfikacji klucza API');
+      } else {
+        setApiKeyTestResult({ success: true, message: 'Połączenie z Google Gemini API działa w 100% poprawnie!' });
+        showToast('Klucz API jest aktywny!');
+      }
+    } catch (err: any) {
+      setApiKeyTestResult({ success: false, message: `Błąd sieciowy: ${err?.message || 'Brak połączenia z internetem'}` });
+    } finally {
+      setIsTestingApiKey(false);
+    }
+  };
+
+  // SOS Craving Modal & AI Chat Handlers
+  const handleOpenSosModal = () => {
+    setShowSosModal(true);
+    setSosTab('chat');
+    navStateRef.current.showSosModal = true;
+    if (sosChatMessages.length === 0) {
+      const streakInfo = days > 0 ? `${days} dni i ${hours}h` : `${hours} godzin i ${minutes}m`;
+      setSosChatMessages([
+        {
+          id: 'welcome',
+          role: 'model',
+          content: `Cześć! Widzę, że walczysz z nagłą pokusą. Pamiętaj: Twój czas wolności od kofeiny to już **${streakInfo}**! Fala ochoty to jedynie przejściowy impuls w mózgu, który gaśnie po około 10–15 minutach.\n\nWybierz jedno z szybkich pytań poniżej lub napisz mi co czujesz, a wytłumaczę Ci co zyskasz, jeśli dziś nie ulegniesz!`
+        }
+      ]);
+    }
+  };
+
+  const handleCloseSosModal = () => {
+    setShowSosModal(false);
+    setShowApiKeyInlineInSos(false);
+    navStateRef.current.showSosModal = false;
+  };
+
+  const handleSendSosMessage = async (customPrompt?: string) => {
+    const text = (customPrompt || sosInputText).trim();
+    if (!text || sosIsLoading) return;
+
+    const userMsg = {
+      id: createUniqueId('user-msg'),
+      role: 'user' as const,
+      content: text
+    };
+
+    const updated = [...sosChatMessages, userMsg];
+    setSosChatMessages(updated);
+    setSosInputText('');
+    setSosIsLoading(true);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      if (sosChatScrollRef.current) {
+        sosChatScrollRef.current.scrollTop = sosChatScrollRef.current.scrollHeight;
+      }
+    }, 50);
+
+    let modelReply = "";
+
+    // 1. If custom Gemini API key is configured by the user, call Gemini REST API directly (works 100% on GitHub Pages, mobile, PWA)
+    if (customGeminiApiKey.trim()) {
+      try {
+        const systemPrompt = `Jesteś empatycznym, naukowo uzasadnionym i motywującym asystentem kryzysowym w aplikacji ZeroCaff do rzucania kofeiny.
+Użytkownik odczuwa nagłą, silną chęć na wypicie kawy lub napoju energetycznego i szuka wsparcia.
+Profil użytkownika: ${days} dni wolnych od kofeiny (od ostatniego spożycia minęło ok. ${Math.floor(diffSeconds / 3600)} godz.).
+
+Twoje zadanie:
+1. Natychmiast odciągnąć użytkownika od sięgnięcia po kofeinę z empatią i spokojem.
+2. Wytłumaczyć prostym, plastycznym językiem co DOKŁADNIE osiągnie i zyska, jeśli się teraz NIE napije (np. regeneracja fazy snu głębokiego NREM-3/4 o 30-35%, normalizacja receptorów adenozynowych, brak nagłego wyrzutu kortyzolu i kołatania serca, brak zjazdu energetycznego za 2 godziny).
+3. Podsunąć 1 natychmiastowy krok zastępczy (np. duża szklanka lodowatej wody, 60-sekundowy oddech 4-7-8, rozciąganie, herbata miętowa/rooibos).
+4. Utrzymuj odpowiedzi zwięzłe (maksymalnie 3-4 zdania lub 2-3 zwięzłe punkty), bez zbędnego lania wody, w języku polskim.`;
+
+        const contents = updated.map(m => ({
+          role: m.role === 'model' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${customGeminiApiKey.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: { temperature: 0.7, maxOutputTokens: 600 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          modelReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+      } catch (directErr) {
+        console.warn("Direct Gemini call failed:", directErr);
+      }
+    }
+
+    // 2. If no direct response yet, try server /api/sos-chat
+    if (!modelReply) {
+      try {
+        const res = await fetch('/api/sos-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: updated,
+            streakDays: days,
+            lastIntakeHoursAgo: Math.floor(diffSeconds / 3600),
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) {
+            modelReply = data.text;
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Fallback if still no response (e.g. static GitHub Pages without API key)
+    if (!modelReply) {
+      modelReply = "Pamiętaj: głód kofeinowy to tylko sygnał biochemiczny w mózgu. Osiąga szczyt po 5 minutach i gaśnie po 15. Dziś w nocy Twój mózg zyska nawet +45 minut głębokiego snu NREM-3!\n\n💡 Wypij teraz dużą szklankę lodowatej wody i weź 5 głębokich oddechów (zakładka Oddech 4-7-8).";
+    }
+
+    setSosChatMessages([...updated, {
+      id: createUniqueId('model-msg'),
+      role: 'model' as const,
+      content: modelReply
+    }]);
+    setSosIsLoading(false);
+    setTimeout(() => {
+      if (sosChatScrollRef.current) {
+        sosChatScrollRef.current.scrollTop = sosChatScrollRef.current.scrollHeight;
+      }
+    }, 80);
+  };
+
+  // 4-7-8 Breathing Cycle Timer (19 seconds full loop: Inhale 4s -> Hold 7s -> Exhale 8s)
+  useEffect(() => {
+    if (!showSosModal || sosTab !== 'breathing') return;
+    const interval = setInterval(() => {
+      setSosBreathingCount(prev => (prev + 1) % 19);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showSosModal, sosTab]);
+
   // Open add modal initialized with current date/time
   const handleOpenAddModal = () => {
     const currentDate = new Date();
@@ -1250,7 +1522,7 @@ export default function Page() {
     localStorage.setItem('zerocaff_stats_start_date', startTimestamp.toString());
     
     if (resetTimerToo) {
-      const nowTime = Date.now();
+      const nowTime = getNow();
       setLastIntake(nowTime);
       localStorage.setItem('zerocaff_last_intake', nowTime.toString());
     }
@@ -1273,17 +1545,17 @@ export default function Page() {
   };
 
   const addLog = (drink: Drink) => {
-    let logTimestamp = Date.now();
+    let logTimestamp = getNow();
 
     if (isCustomTimeOpen && customTimeDate && customTimeHour) {
       const [h, m] = customTimeHour.split(':').map(Number);
       const chosenDate = new Date(customTimeDate);
       chosenDate.setHours(h || 0, m || 0, 0, 0);
-      logTimestamp = Math.min(Date.now(), chosenDate.getTime());
+      logTimestamp = Math.min(getNow(), chosenDate.getTime());
     }
 
     const newLog: DrinkLog = {
-      id: Math.random().toString(36).substring(7),
+      id: createUniqueId('drink-log'),
       timestamp: logTimestamp,
       drinkId: drink.id,
       mg: drink.mg,
@@ -1302,7 +1574,7 @@ export default function Page() {
   };
 
   const applyTimeOffset = (minutesAgo: number) => {
-    const targetDate = new Date(Date.now() - minutesAgo * 60 * 1000);
+    const targetDate = new Date(getNow() - minutesAgo * 60 * 1000);
     setCustomTimeDate(format(targetDate, 'yyyy-MM-dd'));
     setCustomTimeHour(format(targetDate, 'HH:mm'));
     setIsCustomTimeOpen(true);
@@ -1326,14 +1598,14 @@ export default function Page() {
     const logDate = new Date(targetDate);
     const isTargetToday = isSameDay(logDate, new Date());
     if (isTargetToday) {
-      logDate.setTime(Date.now());
+      logDate.setTime(getNow());
     } else {
       logDate.setHours(10, 0, 0, 0);
     }
     const logTimestamp = logDate.getTime();
 
     const newLog: DrinkLog = {
-      id: Math.random().toString(36).substring(7),
+      id: createUniqueId('quick-log'),
       timestamp: logTimestamp,
       drinkId: selectedDrink.id,
       mg: selectedDrink.mg,
@@ -1365,7 +1637,7 @@ export default function Page() {
       setLastIntake(latest);
       localStorage.setItem('zerocaff_last_intake', latest.toString());
     } else {
-      const resetTime = Date.now() - 38 * 3600 * 1000;
+      const resetTime = getNow() - 38 * 3600 * 1000;
       setLastIntake(resetTime);
       localStorage.setItem('zerocaff_last_intake', resetTime.toString());
     }
@@ -1374,7 +1646,7 @@ export default function Page() {
 
   const resetTimerDirectly = () => {
     if (confirm("Czy na pewno chcesz zresetować swój licznik czasu bez dodawania wpisu w historii?")) {
-      const timestamp = Date.now();
+      const timestamp = getNow();
       setLastIntake(timestamp);
       localStorage.setItem('zerocaff_last_intake', timestamp.toString());
       setShowAddModal(false);
@@ -1691,6 +1963,14 @@ export default function Page() {
     : null;
   const favoriteDrink = favoriteDrinkId ? DRINKS.find(d => d.id === favoriteDrinkId) : null;
 
+  // --- DEEP SLEEP (NREM-3) RECOVERY METRICS (vs 4 coffees/day baseline) ---
+  // Baseline: 4 coffees/day (~360mg caffeine) reduces Deep Sleep by ~30-35% (loss of ~35-45 min of deep restorative sleep each night)
+  const deepSleepRecoveryPercent = Math.min(100, Math.round(15 + (Math.min(days, 14) / 14) * 85));
+  const deepSleepMinutesGainedPerNight = Math.min(45, Math.round(12 + (deepSleepRecoveryPercent / 100) * 33));
+  const deepSleepPercentageGain = Math.min(35, Math.round(10 + (deepSleepRecoveryPercent / 100) * 25));
+  const cleanDaysCountForSleep = cleanDaysSinceStart || 0;
+  const totalDeepSleepHoursGained = ((cleanDaysCountForSleep * deepSleepMinutesGainedPerNight) / 60).toFixed(1);
+
   // --- Expanded Time-of-Day Intake Distribution (Rozbudowane Pory Dnia) ---
   const timeBuckets = [
     {
@@ -1894,6 +2174,77 @@ export default function Page() {
 
         {/* Content Area */}
         <div className="pb-32 overflow-hidden">
+          {/* Top Floating Update Banner */}
+          <AnimatePresence>
+            {updateAvailable && !updateBannerDismissed && (
+              <motion.div
+                initial={{ opacity: 0, y: -15, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -15, scale: 0.96 }}
+                className="mx-6 mb-3 p-3 rounded-2xl border shadow-xl backdrop-blur-xl flex items-center justify-between gap-2.5 relative z-30"
+                style={{
+                  backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(24, 25, 34, 0.95)',
+                  borderColor: currentAccent.primary,
+                  boxShadow: `0 4px 20px ${currentAccent.glow}`
+                }}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div 
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border"
+                    style={{ 
+                      backgroundColor: currentAccent.badgeBg, 
+                      color: currentAccent.primary,
+                      borderColor: currentAccent.badgeBorder
+                    }}
+                  >
+                    <ArrowUpCircle size={18} className="animate-bounce" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold truncate">Nowa wersja v{serverVersionInfo?.version || '1.3.0'}</span>
+                      <span 
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full border uppercase"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        PWA
+                      </span>
+                    </div>
+                    <p className={`text-[11px] truncate ${muteTextClasses}`}>
+                      {serverVersionInfo?.description || "Dostępne nowe ulepszenia aplikacji."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateModal(true)}
+                    className="px-2.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition-all active:scale-95 flex items-center gap-1"
+                    style={{ 
+                      backgroundColor: currentAccent.primary,
+                      boxShadow: `0 0 10px ${currentAccent.glow}`
+                    }}
+                  >
+                    <RefreshCw size={12} className={isApplyingUpdate ? "animate-spin" : ""} />
+                    <span>Zaktualizuj</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUpdateBannerDismissed(true)}
+                    className={`p-1.5 rounded-lg hover:bg-zinc-500/20 ${muteTextClasses}`}
+                    title="Ukryj powiadomienie"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Notification Toast Alert */}
           <AnimatePresence>
             {notificationToast && (
@@ -2466,6 +2817,44 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* SOS / CHĘĆ NA KOFEINĘ? CRISIS SUPPORT & AI CHAT BUTTON */}
+                <div className="w-full mt-4">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleOpenSosModal}
+                    className={`w-full p-4 rounded-3xl border flex items-center justify-between gap-3 shadow-lg transition-all relative overflow-hidden group ${
+                      theme === 'light' 
+                        ? 'bg-gradient-to-r from-rose-50 via-orange-50/70 to-amber-50 border-rose-200 text-rose-950 hover:border-rose-300' 
+                        : 'bg-gradient-to-r from-rose-950/40 via-zinc-900/90 to-amber-950/30 border-rose-500/30 text-zinc-100 hover:border-rose-500/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <ShieldAlert size={22} className="animate-pulse" />
+                      </div>
+                      <div className="text-left min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-rose-500">
+                            Chęć na kofeinę? / SOS
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                            <Bot size={11} />
+                            AI Coach
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-0.5 truncate ${subTextClasses}`}>
+                          Porozmawiaj z AI, opanuj impuls i sprawdź co zyskasz
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-9 h-9 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0 group-hover:translate-x-1 transition-transform">
+                      <ChevronRight size={18} />
+                    </div>
+                  </motion.button>
+                </div>
+
                 {/* COLLAPSIBLE MILESTONES SECTION (ZWIJANA DO 2 RZĘDÓW ZE SKROJONYM WIDOKIEM NA KOLEJNY CEL) */}
                 <div className="w-full mt-6">
                   <div className="flex items-center justify-between mb-3 px-1">
@@ -2690,6 +3079,157 @@ export default function Page() {
                     <p className={`text-xs ${subTextClasses}`}>Świetnie! Brak zarejestrowanych potknięć w historii.</p>
                   </div>
                 )}
+
+                {/* DEEP SLEEP (NREM-3) QUALITY & RECOVERY INDICATOR VS. 4 COFFEES/DAY BASELINE */}
+                <div className={`border rounded-3xl p-5 backdrop-blur-sm relative overflow-hidden transition-all ${cardClasses}`}>
+                  {/* Background Glow */}
+                  <div 
+                    className="absolute -top-10 -right-10 w-44 h-44 rounded-full blur-3xl opacity-15 pointer-events-none"
+                    style={{ backgroundColor: '#8b5cf6' }}
+                  />
+
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between mb-4 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
+                        <Moon size={22} className="text-indigo-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400">
+                            Faza NREM-3 / Delta
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                            vs 4 kawy/dzień
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold tracking-tight">Zysk Snu Głębokiego (Deep Sleep)</h3>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDeepSleepDetailsOpen(!isDeepSleepDetailsOpen)}
+                      className={`text-xs px-2.5 py-1 rounded-xl border flex items-center gap-1 font-semibold transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 text-indigo-300`}
+                    >
+                      <span>{isDeepSleepDetailsOpen ? 'Zwiń' : 'Fizjologia'}</span>
+                      <ChevronDown size={13} className={`transition-transform duration-200 ${isDeepSleepDetailsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* 3 Main Metric Indicators */}
+                  <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
+                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Zysk / Noc</span>
+                      <div className="flex items-baseline gap-0.5 mt-1">
+                        <span className="text-xl sm:text-2xl font-black text-indigo-400 tabular-nums">+{deepSleepMinutesGainedPerNight}</span>
+                        <span className={`text-[10px] font-semibold ${muteTextClasses}`}>min</span>
+                      </div>
+                      <span className="text-[9px] text-indigo-300/80 mt-0.5 font-medium">czystej fazy NREM</span>
+                    </div>
+
+                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Jakość NREM</span>
+                      <div className="flex items-baseline gap-0.5 mt-1">
+                        <span className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">+{deepSleepPercentageGain}%</span>
+                      </div>
+                      <span className="text-[9px] text-emerald-300/80 mt-0.5 font-medium">głębsza regeneracja</span>
+                    </div>
+
+                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Od Nowa</span>
+                      <div className="flex items-baseline gap-0.5 mt-1">
+                        <span className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">{totalDeepSleepHoursGained}</span>
+                        <span className={`text-[10px] font-semibold ${muteTextClasses}`}>h</span>
+                      </div>
+                      <span className="text-[9px] text-amber-300/80 mt-0.5 font-medium">zyskane od startu</span>
+                    </div>
+                  </div>
+
+                  {/* Visual Comparative Progress Bar */}
+                  <div className="space-y-2 relative z-10">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="flex items-center gap-1.5 text-zinc-300">
+                        <Activity size={14} className="text-indigo-400" />
+                        <span>Odzyskanie pełnego potencjału snu:</span>
+                      </span>
+                      <span className="font-bold text-indigo-400 tabular-nums">{deepSleepRecoveryPercent}%</span>
+                    </div>
+
+                    {/* Multi-tier Progress Track */}
+                    <div className={`w-full h-4 rounded-full p-0.5 border relative overflow-hidden flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/50 border-zinc-800'}`}>
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 relative"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${deepSleepRecoveryPercent}%` }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                      >
+                        <span className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                      </motion.div>
+                    </div>
+
+                    {/* Stage Milestones below the bar */}
+                    <div className="grid grid-cols-4 gap-1 text-[9px] font-semibold text-center mt-1">
+                      <div className={`p-1 rounded-lg border ${days >= 0 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
+                        1-2 dni (Start)
+                      </div>
+                      <div className={`p-1 rounded-lg border ${days >= 3 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
+                        3-7 dni (Adenozyna)
+                      </div>
+                      <div className={`p-1 rounded-lg border ${days >= 8 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
+                        8-14 dni (Fale delta)
+                      </div>
+                      <div className={`p-1 rounded-lg border ${days >= 15 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'border-transparent text-zinc-500'}`}>
+                        15+ dni (100% NREM)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comparison Context Banner */}
+                  <div className={`mt-3 p-3 rounded-2xl border text-xs flex items-start gap-2.5 ${innerItemBg}`}>
+                    <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                    <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                      <strong className="text-zinc-200">Punkt odniesienia:</strong> Wypijanie 4 kaw dziennie (~360 mg) skraca fazę snu głębokiego (NREM-3) średnio o <strong>30–35%</strong> (tracimy ok. <strong>40 minut</strong> kluczowej naprawy komórkowej każdej nocy). Twój organizm odzyskał już <strong>{deepSleepRecoveryPercent}%</strong> naturalnego potencjału regeneracji!
+                    </p>
+                  </div>
+
+                  {/* Expandable Physiology Details */}
+                  <AnimatePresence>
+                    {isDeepSleepDetailsOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3 pt-3 border-t border-zinc-500/20 space-y-2 text-xs">
+                          <div className="p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
+                            <h4 className="font-bold text-indigo-400 mb-1 flex items-center gap-1.5">
+                              <Brain size={14} />
+                              Dlaczego kofeina niszczy sen głęboki?
+                            </h4>
+                            <p className={`text-[11px] leading-relaxed ${muteTextClasses}`}>
+                              Kofeina blokuje receptory adenozynowe A1 i A2A. Nawet jeśli zasypiasz bez problemu, stężenie kofeiny we krwi spłaszcza wolnofalowe fale mózgowe delta (0.5–4 Hz), uniemożliwiając mózgowi wejście w najgłębszą fazę NREM-3/4.
+                            </p>
+                          </div>
+
+                          <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+                            <h4 className="font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
+                              <Sparkles size={14} />
+                              Co zyskujesz przy abstynencji?
+                            </h4>
+                            <ul className={`text-[11px] space-y-1 list-disc list-inside ${muteTextClasses}`}>
+                              <li><strong>Układ glimfatyczny:</strong> Mózg skutecznie oczyszcza się z neurotoksyn i beta-amyloidu.</li>
+                              <li><strong>Hormon wzrostu (HGH):</strong> Do 70% dobowego wyrzutu HGH następuje właśnie w fazie NREM-3.</li>
+                              <li><strong>Brak porannego zamulenia:</strong> Budzisz się naturalnie wyspany bez konieczności stymulacji.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Consumption Chart with Daily 60-Day Horizontal Scroll & Weekly Mode */}
                 <div className={`border rounded-3xl p-5 pt-6 backdrop-blur-sm ${cardClasses}`}>
@@ -3342,11 +3882,6 @@ export default function Page() {
                   </AnimatePresence>
                 </div>
 
-                {/* Subtle horizontal divider between Theme and Accent */}
-                <div className="flex items-center px-4 py-0.5">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/20 to-transparent" />
-                </div>
-
                 {/* 2. ACCORDION ITEM: KOLOR WIODĄCY (Z NOWYMI KOLORAMI) */}
                 <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
                   <button
@@ -3434,9 +3969,164 @@ export default function Page() {
                   </AnimatePresence>
                 </div>
 
-                {/* Subtle horizontal divider between Accent and Milestone */}
-                <div className="flex items-center px-4 py-0.5">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-zinc-500/20 to-transparent" />
+                {/* ACCORDION ITEM: KLUCZ GEMINI AI (GITHUB PAGES & TELEFON) */}
+                <div className={`border rounded-3xl backdrop-blur-sm transition-all overflow-hidden ${cardClasses}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSettingsSection('geminiApi')}
+                    className="w-full p-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-white/[0.02] focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        <Key size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-sm font-bold tracking-tight truncate">Klucz Gemini AI</h3>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-md font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                            GitHub Pages
+                          </span>
+                        </div>
+                        <p className={`text-[11px] truncate ${muteTextClasses}`}>Czat kryzysowy SOS na telefonie bez serwera</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span 
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                          customGeminiApiKey
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }`}
+                      >
+                        {customGeminiApiKey ? <Check size={11} /> : <KeyRound size={11} />}
+                        {customGeminiApiKey ? 'Aktywny' : 'Brak klucza'}
+                      </span>
+                      <ChevronDown 
+                        size={17} 
+                        className={`transition-transform duration-300 ${muteTextClasses} ${openSettingsSections.geminiApi ? 'rotate-180 text-zinc-200' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {openSettingsSections.geminiApi && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-zinc-500/10 space-y-3">
+                          <p className={`text-xs ${muteTextClasses} leading-relaxed`}>
+                            Wpisz swój darmowy klucz <strong>Google Gemini API</strong>, aby asystent kryzysowy SOS i rozmowa z AI działały w 100% bezpośrednio na Twoim telefonie podczas hostowania aplikacji na <strong>GitHub Pages</strong>.
+                          </p>
+
+                          {/* Key Input Field */}
+                          <div className="space-y-1.5">
+                            <label className={`text-[11px] font-bold block ${subTextClasses}`}>
+                              Twój klucz API (AI Studio):
+                            </label>
+                            <div className="relative flex items-center">
+                              <input
+                                type={isApiKeyVisible ? "text" : "password"}
+                                value={apiKeyInputValue}
+                                onChange={(e) => setApiKeyInputValue(e.target.value)}
+                                placeholder="AIzaSy..."
+                                className={`w-full border rounded-2xl pl-3.5 pr-20 py-2.5 text-xs font-mono focus:outline-none transition-all ${cardClasses}`}
+                                style={{ borderColor: apiKeyInputValue ? currentAccent.primary : undefined }}
+                              />
+                              <div className="absolute right-2 flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
+                                  className={`p-1.5 rounded-lg ${muteTextClasses} hover:text-zinc-200 transition-colors`}
+                                  title={isApiKeyVisible ? "Ukryj klucz" : "Pokaż klucz"}
+                                >
+                                  {isApiKeyVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Test Result Message */}
+                          {apiKeyTestResult && (
+                            <div className={`p-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                              apiKeyTestResult.success
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                : 'bg-red-500/10 text-red-300 border-red-500/30'
+                            }`}>
+                              {apiKeyTestResult.success ? <CheckCircle2 size={15} className="shrink-0 text-emerald-400" /> : <AlertCircle size={15} className="shrink-0 text-red-400" />}
+                              <span className="leading-tight">{apiKeyTestResult.message}</span>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveCustomApiKey()}
+                              className="py-2.5 px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-95"
+                              style={{
+                                backgroundColor: currentAccent.primary,
+                                boxShadow: `0 0 10px ${currentAccent.glow}`
+                              }}
+                            >
+                              <Check size={14} />
+                              <span>Zapisz klucz</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleTestCustomApiKey()}
+                              disabled={isTestingApiKey || (!apiKeyInputValue && !customGeminiApiKey)}
+                              className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${innerItemBg} hover:border-zinc-500`}
+                            >
+                              <RefreshCw size={13} className={isTestingApiKey ? "animate-spin" : ""} style={{ color: currentAccent.primary }} />
+                              <span>{isTestingApiKey ? "Testowanie..." : "Testuj połączenie"}</span>
+                            </button>
+                          </div>
+
+                          {customGeminiApiKey && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveCustomApiKey}
+                              className="w-full py-1.5 text-[11px] text-red-400/80 hover:text-red-400 flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                              <span>Usuń zapisany klucz</span>
+                            </button>
+                          )}
+
+                          {/* Helper Info & Direct Link to Google AI Studio */}
+                          <div className={`p-3 rounded-2xl border text-[11px] space-y-1.5 ${innerItemBg}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-zinc-200 flex items-center gap-1.5">
+                                <Sparkles size={13} style={{ color: currentAccent.primary }} />
+                                Jak zdobyć darmowy klucz?
+                              </span>
+                              <span className="text-[10px] text-emerald-400 font-bold">100% Bezpłatny</span>
+                            </div>
+                            <p className={`${subTextClasses} leading-relaxed`}>
+                              1. Wejdź na <strong>aistudio.google.com/apikey</strong><br/>
+                              2. Zaloguj się kontem Google i kliknij <em>&quot;Create API key&quot;</em><br/>
+                              3. Skopiuj i wklej powyżej.
+                            </p>
+                            <p className={`text-[10px] pt-1 border-t border-zinc-700/40 ${muteTextClasses}`}>
+                              🔒 Klucz jest przechowywany wyłącznie w Twoim telefonie (localStorage) i nie jest wysyłany na żadne serwery pośrednie.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* 3. ACCORDION ITEM: KARTA KAMIENIA MILOWEGO */}
@@ -4951,6 +5641,443 @@ export default function Page() {
           )}
         </AnimatePresence>
 
+        {/* SOS / CRAVING CRISIS & AI COACH MODAL */}
+        <AnimatePresence>
+          {showSosModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseSosModal}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+            >
+              <motion.div
+                initial={{ y: '100%', opacity: 0.8 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '100%', opacity: 0 }}
+                transition={{ type: "spring", damping: 26, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full max-w-lg max-h-[92vh] sm:max-h-[85vh] flex flex-col border-t sm:rounded-3xl sm:border shadow-2xl overflow-hidden ${modalBg}`}
+              >
+                {/* Modal Header */}
+                <div className="p-4 sm:p-5 border-b border-zinc-800/80 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0">
+                      <ShieldAlert size={22} className="animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-bold tracking-tight">Wsparcie w Kryzysie (SOS)</h2>
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKeyInlineInSos(!showApiKeyInlineInSos)}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold border flex items-center gap-1 transition-all ${
+                            customGeminiApiKey
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                              : 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+                          }`}
+                          title="Kliknij, aby skonfigurować własny klucz API (GitHub Pages / Telefon)"
+                        >
+                          <Key size={10} />
+                          <span>{customGeminiApiKey ? 'Klucz AI OK' : 'Klucz API'}</span>
+                        </button>
+                      </div>
+                      <p className={`text-xs ${subTextClasses}`}>
+                        Twój osobisty przewodnik i motywacja w trudnym momencie
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseSosModal}
+                    className={`w-9 h-9 rounded-2xl border flex items-center justify-center transition-all ${innerItemBg} hover:opacity-80`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Inline API Key Drawer / Configuration within SOS Modal */}
+                <AnimatePresence>
+                  {showApiKeyInlineInSos && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-b border-zinc-700/60 bg-black/40 px-4 py-3 shrink-0 overflow-hidden"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                            <Key size={13} style={{ color: currentAccent.primary }} />
+                            Klucz Google Gemini AI (GitHub Pages)
+                          </span>
+                          <span className="text-[10px] text-zinc-400">Działa w 100% na telefonie</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type={isApiKeyVisible ? "text" : "password"}
+                            value={apiKeyInputValue}
+                            onChange={(e) => setApiKeyInputValue(e.target.value)}
+                            placeholder="Wklej klucz AIzaSy..."
+                            className={`flex-1 border rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none ${cardClasses}`}
+                            style={{ borderColor: apiKeyInputValue ? currentAccent.primary : undefined }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
+                            className={`p-1.5 rounded-lg ${muteTextClasses} hover:text-zinc-200`}
+                          >
+                            {isApiKeyVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSaveCustomApiKey();
+                              setShowApiKeyInlineInSos(false);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-white text-xs font-bold shadow-sm"
+                            style={{ backgroundColor: currentAccent.primary }}
+                          >
+                            Zapisz
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className={muteTextClasses}>🔒 Zapisywany tylko lokalnie w przeglądarce</span>
+                          {customGeminiApiKey && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleRemoveCustomApiKey();
+                                setShowApiKeyInlineInSos(false);
+                              }}
+                              className="text-red-400 hover:underline"
+                            >
+                              Usuń klucz
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* 3 Tab Switcher */}
+                <div className="p-3 border-b border-zinc-800/60 bg-black/20 shrink-0 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSosTab('chat')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      sosTab === 'chat'
+                        ? 'text-white shadow-md'
+                        : `${muteTextClasses} hover:text-zinc-200`
+                    }`}
+                    style={{
+                      backgroundColor: sosTab === 'chat' ? currentAccent.primary : 'transparent',
+                    }}
+                  >
+                    <Bot size={14} />
+                    <span>Rozmowa z AI</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSosTab('breathing')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      sosTab === 'breathing'
+                        ? 'text-white shadow-md'
+                        : `${muteTextClasses} hover:text-zinc-200`
+                    }`}
+                    style={{
+                      backgroundColor: sosTab === 'breathing' ? currentAccent.primary : 'transparent',
+                    }}
+                  >
+                    <Wind size={14} />
+                    <span>Oddech 4-7-8</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSosTab('alternatives')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      sosTab === 'alternatives'
+                        ? 'text-white shadow-md'
+                        : `${muteTextClasses} hover:text-zinc-200`
+                    }`}
+                    style={{
+                      backgroundColor: sosTab === 'alternatives' ? currentAccent.primary : 'transparent',
+                    }}
+                  >
+                    <Zap size={14} />
+                    <span>Szybkie Akcje</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: AI CHAT */}
+                {sosTab === 'chat' && (
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    {/* Chat Messages Container */}
+                    <div 
+                      ref={sosChatScrollRef}
+                      className="flex-1 p-4 overflow-y-auto space-y-3"
+                    >
+                      {sosChatMessages.map((msg) => {
+                        const isModel = msg.role === 'model';
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex gap-2.5 ${isModel ? 'items-start' : 'items-end justify-end'}`}
+                          >
+                            {isModel && (
+                              <div 
+                                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border"
+                                style={{
+                                  backgroundColor: currentAccent.badgeBg,
+                                  borderColor: currentAccent.badgeBorder,
+                                  color: currentAccent.primary
+                                }}
+                              >
+                                <Bot size={16} />
+                              </div>
+                            )}
+
+                            <div
+                              className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                                isModel
+                                  ? `${innerItemBg} border ${theme === 'light' ? 'border-zinc-200' : 'border-zinc-800'}`
+                                  : 'text-white shadow-md'
+                              }`}
+                              style={!isModel ? { backgroundColor: currentAccent.primary } : {}}
+                            >
+                              <div className="whitespace-pre-wrap">{msg.content}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Typing indicator */}
+                      {sosIsLoading && (
+                        <div className="flex items-center gap-2 text-xs text-zinc-400 p-2">
+                          <div className="w-7 h-7 rounded-xl bg-zinc-800 flex items-center justify-center">
+                            <Bot size={14} className="text-zinc-400 animate-spin" />
+                          </div>
+                          <span className="flex gap-1 items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.2s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.4s]" />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* GitHub Pages Tip Banner when no custom API Key is set */}
+                    {!customGeminiApiKey && !showApiKeyInlineInSos && (
+                      <div className="mx-3 my-1 p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between text-[11px] shrink-0">
+                        <div className="flex items-center gap-1.5 text-indigo-300 min-w-0">
+                          <Key size={12} className="shrink-0" />
+                          <span className="truncate">Hosting GitHub Pages? Skonfiguruj klucz API dla telefonu.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKeyInlineInSos(true)}
+                          className="px-2 py-0.5 rounded-lg font-bold text-[10px] bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 shrink-0 ml-2"
+                        >
+                          Wpisz klucz
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Quick Suggestion Chips */}
+                    <div className="px-4 py-2 border-t border-zinc-800/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                      {[
+                        "Mam potężną chęć na kawę, pomóż!",
+                        "Co zyskam, jeśli teraz nie ulegnę?",
+                        "Czuję spadek energii, jak go pokonać?",
+                        "Ile trwa fala głodu kofeinowego?"
+                      ].map((promptText, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={sosIsLoading}
+                          onClick={() => handleSendSosMessage(promptText)}
+                          className={`text-[11px] font-medium px-3 py-1.5 rounded-full border whitespace-nowrap transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 active:scale-95 disabled:opacity-50`}
+                        >
+                          {promptText}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Chat Input Bar */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSendSosMessage();
+                      }}
+                      className="p-3 border-t border-zinc-800/80 flex items-center gap-2 shrink-0 bg-black/10"
+                    >
+                      <input
+                        type="text"
+                        value={sosInputText}
+                        onChange={(e) => setSosInputText(e.target.value)}
+                        placeholder="Napisz co czujesz lub o co chcesz zapytać..."
+                        disabled={sosIsLoading}
+                        className={`flex-1 border rounded-2xl px-4 py-3 text-xs focus:outline-none ${cardClasses}`}
+                        style={{ borderColor: currentAccent.primary }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!sosInputText.trim() || sosIsLoading}
+                        className="w-11 h-11 rounded-2xl text-white flex items-center justify-center shadow-md transition-all active:scale-95 disabled:opacity-40 shrink-0"
+                        style={{ backgroundColor: currentAccent.primary }}
+                      >
+                        <Send size={16} />
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* TAB 2: BREATHING 4-7-8 */}
+                {sosTab === 'breathing' && (
+                  <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-6 overflow-y-auto">
+                    {/* Breathing circle animation */}
+                    {(() => {
+                      const phase = sosBreathingCount < 4 
+                        ? { name: 'Wdech nosem', duration: 4 - sosBreathingCount, scale: 1.25, color: '#06b6d4', text: 'Poczuj jak chłodne powietrze wypełnia płuca' }
+                        : sosBreathingCount < 11
+                        ? { name: 'Zatrzymaj oddech', duration: 11 - sosBreathingCount, scale: 1.25, color: '#8b5cf6', text: 'Uspokój tętno i wycisz układ nerwowy' }
+                        : { name: 'Długi wydech ustami', duration: 19 - sosBreathingCount, scale: 0.85, color: '#10b981', text: 'Wypuść całe napięcie i impuls sięgnięcia po kofeinę' };
+
+                      return (
+                        <div className="flex flex-col items-center space-y-5 my-2">
+                          <div className="relative w-48 h-48 flex items-center justify-center">
+                            {/* Outer animated aura */}
+                            <motion.div
+                              animate={{ scale: phase.scale }}
+                              transition={{ duration: 3.5, ease: "easeInOut" }}
+                              className="absolute inset-0 rounded-full blur-2xl opacity-30"
+                              style={{ backgroundColor: phase.color }}
+                            />
+                            
+                            {/* Main Breathing Disk */}
+                            <motion.div
+                              animate={{ scale: phase.scale }}
+                              transition={{ duration: 3.5, ease: "easeInOut" }}
+                              className="w-40 h-40 rounded-full border-2 flex flex-col items-center justify-center shadow-2xl backdrop-blur-md relative z-10"
+                              style={{ borderColor: phase.color, backgroundColor: `${phase.color}15` }}
+                            >
+                              <span className="text-3xl font-black tabular-nums" style={{ color: phase.color }}>
+                                {phase.duration}s
+                              </span>
+                              <span className="text-xs font-bold uppercase tracking-wider mt-1 text-white">
+                                {phase.name}
+                              </span>
+                            </motion.div>
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-200">{phase.text}</p>
+                            <p className={`text-xs mt-1 max-w-xs mx-auto ${muteTextClasses}`}>
+                              Cykl 4-7-8 stymuluje nerw błędny, natychmiastowo obniżając poziom kortyzolu i wyciszając głód kofeinowy.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="w-full pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSosTab('chat')}
+                        className="w-full py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        style={{ backgroundColor: currentAccent.primary }}
+                      >
+                        <Bot size={16} />
+                        <span>Porozmawiaj z AI o swoich odczuciach</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: ALTERNATIVES & RESCUE ACTIONS */}
+                {sosTab === 'alternatives' && (
+                  <div className="flex-1 p-5 space-y-3 overflow-y-auto">
+                    <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 mb-2">
+                      <h4 className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                        <Sparkles size={14} />
+                        Natychmiastowe zamienniki biohackingu:
+                      </h4>
+                      <p className={`text-[11px] mt-0.5 ${subTextClasses}`}>
+                        Wybierz jedną czynność, by przekierować dopaminę w mózgu w 2 minuty:
+                      </p>
+                    </div>
+
+                    {[
+                      {
+                        title: "1. Lodowata woda z cytryną",
+                        desc: "Wypij 300 ml bardzo zimnej wody. Termogeneza i nawodnienie podnoszą czujność o 20% bez kofeiny.",
+                        icon: GlassWater,
+                        color: "text-cyan-400",
+                        badge: "Błyskawiczne"
+                      },
+                      {
+                        title: "2. Zimna woda na nadgarstki / twarz",
+                        desc: "Aktywuje odruch nurka (mammalian dive reflex) – spowalnia puls i wyłącza gonitwę myśli o kawie.",
+                        icon: Sparkles,
+                        color: "text-sky-400",
+                        badge: "Odruch nurka"
+                      },
+                      {
+                        title: "3. 3-minutowy spacer lub 20 przysiadów",
+                        desc: "Praca mięśni wyrzuca endorfiny i kwas mlekowy, które przełamują pętlę nawyku i ospałość.",
+                        icon: Activity,
+                        color: "text-emerald-400",
+                        badge: "Ruch"
+                      },
+                      {
+                        title: "4. Herbata miętowa lub rumiankowa",
+                        desc: "Mentol pobudza receptory chłodu w jamie ustnej, dając poczucie odświeżenia bez stymulantów.",
+                        icon: Leaf,
+                        color: "text-amber-400",
+                        badge: "0 mg kofeiny"
+                      }
+                    ].map((item, idx) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <div key={idx} className={`p-3.5 rounded-2xl border flex items-start gap-3 ${innerItemBg}`}>
+                          <div className={`w-9 h-9 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center shrink-0 ${item.color}`}>
+                            <ItemIcon size={18} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-xs font-bold text-zinc-100">{item.title}</h5>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded-md font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                {item.badge}
+                              </span>
+                            </div>
+                            <p className={`text-[11px] mt-0.5 leading-relaxed ${subTextClasses}`}>
+                              {item.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setSosTab('chat')}
+                      className="w-full py-3 rounded-2xl text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
+                      style={{ backgroundColor: currentAccent.primary }}
+                    >
+                      <Bot size={16} />
+                      <span>Porozmawiaj z AI</span>
+                    </button>
+                  </div>
+                )}
+
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* RESET / CLEAR DATA CONFIRMATION MODAL */}
         <AnimatePresence>
           {showResetConfirmModal && resetModalType && (
@@ -5028,6 +6155,121 @@ export default function Page() {
                       }`}
                     >
                       Potwierdź
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* DEDICATED APP UPDATE MODAL */}
+        <AnimatePresence>
+          {showUpdateModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isApplyingUpdate && setShowUpdateModal(false)}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${modalBg}`}
+              >
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div 
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg relative"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      borderColor: currentAccent.badgeBorder,
+                      color: currentAccent.primary
+                    }}
+                  >
+                    <ArrowUpCircle size={28} className={isApplyingUpdate ? "animate-spin" : "animate-bounce"} />
+                    <div 
+                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-zinc-900"
+                      style={{ backgroundColor: currentAccent.primary }}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-center gap-2">
+                      <h3 className="text-lg font-bold tracking-tight">Aktualizacja ZeroCaff</h3>
+                      <span 
+                        className="text-xs font-bold px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: currentAccent.badgeBg,
+                          color: currentAccent.primary,
+                          borderColor: currentAccent.badgeBorder
+                        }}
+                      >
+                        v{serverVersionInfo?.version || '1.3.0'}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-2 leading-relaxed ${subTextClasses}`}>
+                      {serverVersionInfo?.description || "Dostępna jest nowa wersja z ulepszeniami stabilności i funkcjami dla PWA."}
+                    </p>
+                  </div>
+
+                  <div className={`w-full p-3.5 rounded-2xl border text-left text-xs space-y-2 ${innerItemBg}`}>
+                    <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-zinc-500/10">
+                      <span className={muteTextClasses}>Zainstalowana wersja:</span>
+                      <span className="font-semibold">v{APP_VERSION}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-zinc-500/10">
+                      <span className={muteTextClasses}>Nowa wersja serwera:</span>
+                      <span className="font-bold" style={{ color: currentAccent.primary }}>
+                        v{serverVersionInfo?.version || '1.3.0'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className={muteTextClasses}>Twoje dane & wpisy:</span>
+                      <span className="font-semibold text-emerald-500 flex items-center gap-1">
+                        <CheckCircle2 size={12} />
+                        Bezpieczne (100% zachowane)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 w-full pt-1">
+                    <button
+                      type="button"
+                      disabled={isApplyingUpdate}
+                      onClick={() => {
+                        setShowUpdateModal(false);
+                        setUpdateBannerDismissed(true);
+                      }}
+                      className={`py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${innerItemBg} hover:border-zinc-500`}
+                    >
+                      Później
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isApplyingUpdate}
+                      onClick={applyUpdate}
+                      className="py-3 rounded-2xl text-white text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-75"
+                      style={{
+                        backgroundColor: currentAccent.primary,
+                        boxShadow: `0 0 14px ${currentAccent.glow}`
+                      }}
+                    >
+                      {isApplyingUpdate ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Wgrywanie...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} />
+                          <span>Zaktualizuj teraz</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

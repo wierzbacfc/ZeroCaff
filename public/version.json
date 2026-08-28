@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
-  "buildTime": 1787815200000,
-  "description": "Obsługa PWA, instalacja na Androidzie z własną ikoną oraz automatyczne wykrywanie aktualizacji."
+  "version": "1.3.0",
+  "buildTime": 1787820000000,
+  "description": "Kontrolowane aktualizacje z powiadomieniem, zysk snu głębokiego (Deep Sleep), obsługa klucza Gemini AI oraz ulepszona instalacja PWA."
 }

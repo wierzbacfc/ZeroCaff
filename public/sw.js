@@ -1,5 +1,5 @@
 // ZeroCaff Service Worker
-const CACHE_NAME = 'zerocaff-cache-v1.2.0';
+const CACHE_NAME = 'zerocaff-cache-v1.3.0';
 
 // Calculate base path from location of sw.js
 const getBasePath = () => {
