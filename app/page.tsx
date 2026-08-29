@@ -14,7 +14,8 @@ import {
   Bell, BellOff, BellRing, Target, AlertCircle,
   Download, RefreshCw, Smartphone, CheckCircle, Wifi, ArrowUpCircle, Sliders, LogOut,
   CalendarDays, CalendarClock, History, Eye, EyeOff, Key, KeyRound, ExternalLink,
-  ShieldAlert, LifeBuoy, Bot, Send, Bed, Wind, MessageSquare, HelpCircle, Lightbulb
+  ShieldAlert, LifeBuoy, Bot, Send, Bed, Wind, MessageSquare, HelpCircle, Lightbulb,
+  Waves, SlidersHorizontal, Layers
 } from 'lucide-react';
 import { format, subDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -742,12 +743,16 @@ export default function Page() {
 
   // SOS Craving / Crisis Support Modal & AI Chat States
   const [showSosModal, setShowSosModal] = useState<boolean>(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
   const [sosTab, setSosTab] = useState<'chat' | 'breathing' | 'alternatives'>('chat');
   const [sosChatMessages, setSosChatMessages] = useState<Array<{ id: string; role: 'user' | 'model'; content: string }>>([]);
   const [sosInputText, setSosInputText] = useState<string>('');
   const [sosIsLoading, setSosIsLoading] = useState<boolean>(false);
   const [sosBreathingCount, setSosBreathingCount] = useState<number>(0);
-  const [isDeepSleepDetailsOpen, setIsDeepSleepDetailsOpen] = useState<boolean>(false);
+  const [isDeepSleepDetailsOpen, setIsDeepSleepDetailsOpen] = useState<boolean>(true);
+  const [sleepPanelTab, setSleepPanelTab] = useState<'overview' | 'hypnogram' | 'neuro' | 'calculator'>('overview');
+  const [priorCaffeineBaseline, setPriorCaffeineBaseline] = useState<number>(360);
+  const [hypnogramViewMode, setHypnogramViewMode] = useState<'waves' | 'cycles'>('waves');
   const sosChatScrollRef = useRef<HTMLDivElement>(null);
 
   // Custom Gemini API Key for GitHub Pages / Mobile direct client-side requests
@@ -835,6 +840,7 @@ export default function Page() {
     showStartDateModal,
     showResetConfirmModal,
     showUpdateModal,
+    showExitConfirmModal,
   });
 
   useEffect(() => {
@@ -847,8 +853,17 @@ export default function Page() {
       showStartDateModal,
       showResetConfirmModal,
       showUpdateModal,
+      showExitConfirmModal,
     };
-  }, [view, showAddModal, showSosModal, selectedMilestone, showInstallGuideModal, showStartDateModal, showResetConfirmModal, showUpdateModal]);
+  }, [view, showAddModal, showSosModal, selectedMilestone, showInstallGuideModal, showStartDateModal, showResetConfirmModal, showUpdateModal, showExitConfirmModal]);
+
+  const pushModalHistory = (modalName: string) => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ zerocaff: true, modal: modalName, ts: Date.now() }, '');
+      } catch {}
+    }
+  };
 
   useEffect(() => {
     const savedLogs = localStorage.getItem('zerocaff_logs') || localStorage.getItem('caffeine_logs');
@@ -907,6 +922,13 @@ export default function Page() {
     const savedShowMilestone = localStorage.getItem('zerocaff_show_milestone_card');
     if (savedShowMilestone !== null) {
       setShowMilestoneCard(savedShowMilestone === 'true');
+    }
+    const savedSleepBaseline = localStorage.getItem('zerocaff_sleep_baseline_mg');
+    if (savedSleepBaseline) {
+      const parsed = parseInt(savedSleepBaseline, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        setPriorCaffeineBaseline(parsed);
+      }
     }
     const savedApiKey = localStorage.getItem('zerocaff_custom_gemini_api_key');
     if (savedApiKey) {
@@ -1093,61 +1115,78 @@ export default function Page() {
     const handlePopState = () => {
       const state = navStateRef.current;
 
-      // 0. If Update Modal is open -> close it
+      // 0. If Exit Confirm Modal is open -> close it
+      if (state.showExitConfirmModal) {
+        setShowExitConfirmModal(false);
+        navStateRef.current.showExitConfirmModal = false;
+        return;
+      }
+
+      // 1. If Update Modal is open -> close it
       if (state.showUpdateModal) {
         setShowUpdateModal(false);
         navStateRef.current.showUpdateModal = false;
         return;
       }
 
-      // 1. If Milestone Detail Modal is open -> close it
+      // 2. If Milestone Detail Modal is open -> close it
       if (state.selectedMilestone) {
         setSelectedMilestone(null);
         navStateRef.current.selectedMilestone = null;
         return;
       }
 
-      // 1b. If SOS Craving Modal is open -> close it
+      // 3. If SOS Craving Modal is open -> close it
       if (state.showSosModal) {
         setShowSosModal(false);
+        setShowApiKeyInlineInSos(false);
         navStateRef.current.showSosModal = false;
         return;
       }
 
-      // 2. If Reset Confirm Modal is open -> close it
+      // 4. If Reset Confirm Modal is open -> close it
       if (state.showResetConfirmModal) {
         setShowResetConfirmModal(false);
         navStateRef.current.showResetConfirmModal = false;
         return;
       }
 
-      // 3. If Start Date Modal is open -> close it
+      // 5. If Start Date Modal is open -> close it
       if (state.showStartDateModal) {
         setShowStartDateModal(false);
         navStateRef.current.showStartDateModal = false;
         return;
       }
 
-      // 4. If Install Guide Modal is open -> close it
+      // 6. If Install Guide Modal is open -> close it
       if (state.showInstallGuideModal) {
         setShowInstallGuideModal(false);
         navStateRef.current.showInstallGuideModal = false;
         return;
       }
 
-      // 5. If Add Drink Modal is open -> close it
+      // 7. If Add Drink Modal is open -> close it
       if (state.showAddModal) {
         setShowAddModal(false);
         navStateRef.current.showAddModal = false;
         return;
       }
 
-      // 6. If in subview ('stats' or 'settings') -> navigate back to 'home'
+      // 8. If in subview ('stats' or 'settings') -> navigate back to 'home'
       if (state.view !== 'home') {
         setView('home');
         navStateRef.current.view = 'home';
         return;
       }
+
+      // 9. On 'home' with no open modals -> Intercept back button and show Exit Confirmation dialog
+      if (typeof window !== 'undefined') {
+        try {
+          window.history.pushState({ zerocaff: true, view: 'home' }, '');
+        } catch {}
+      }
+      setShowExitConfirmModal(true);
+      navStateRef.current.showExitConfirmModal = true;
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -1340,6 +1379,7 @@ export default function Page() {
 
   // SOS Craving Modal & AI Chat Handlers
   const handleOpenSosModal = () => {
+    pushModalHistory('sos');
     setShowSosModal(true);
     setSosTab('chat');
     navStateRef.current.showSosModal = true;
@@ -1349,7 +1389,7 @@ export default function Page() {
         {
           id: 'welcome',
           role: 'model',
-          content: `Cześć! Widzę, że walczysz z nagłą pokusą. Pamiętaj: Twój czas wolności od kofeiny to już **${streakInfo}**! Fala ochoty to jedynie przejściowy impuls w mózgu, który gaśnie po około 10–15 minutach.\n\nWybierz jedno z szybkich pytań poniżej lub napisz mi co czujesz, a wytłumaczę Ci co zyskasz, jeśli dziś nie ulegniesz!`
+          content: `Cześć! Jestem Twoim asystentem w ZeroCaff. Twój czas wolności od kofeiny to już **${streakInfo}**!\n\nMożesz mnie zapytać o cokolwiek: od wsparcia w kryzysie i naukowych korzyści dla snu, po naturalne sposoby na energię, a nawet poprosić o opowiedzenie żartu na rozładowanie napięcia. W czym mogę Ci teraz pomóc?`
         }
       ]);
     }
@@ -1388,15 +1428,15 @@ export default function Page() {
     // 1. If custom Gemini API key is configured by the user, call Gemini REST API directly (works 100% on GitHub Pages, mobile, PWA)
     if (customGeminiApiKey.trim()) {
       try {
-        const systemPrompt = `Jesteś empatycznym, naukowo uzasadnionym i motywującym asystentem kryzysowym w aplikacji ZeroCaff do rzucania kofeiny.
-Użytkownik odczuwa nagłą, silną chęć na wypicie kawy lub napoju energetycznego i szuka wsparcia.
+        const systemPrompt = `Jesteś wszechstronnym, inteligentnym, empatycznym i przyjaznym asystentem AI w aplikacji ZeroCaff (aplikacji wspierającej wolność od kofeiny i zdrowe nawyki).
 Profil użytkownika: ${days} dni wolnych od kofeiny (od ostatniego spożycia minęło ok. ${Math.floor(diffSeconds / 3600)} godz.).
 
-Twoje zadanie:
-1. Natychmiast odciągnąć użytkownika od sięgnięcia po kofeinę z empatią i spokojem.
-2. Wytłumaczyć prostym, plastycznym językiem co DOKŁADNIE osiągnie i zyska, jeśli się teraz NIE napije (np. regeneracja fazy snu głębokiego NREM-3/4 o 30-35%, normalizacja receptorów adenozynowych, brak nagłego wyrzutu kortyzolu i kołatania serca, brak zjazdu energetycznego za 2 godziny).
-3. Podsunąć 1 natychmiastowy krok zastępczy (np. duża szklanka lodowatej wody, 60-sekundowy oddech 4-7-8, rozciąganie, herbata miętowa/rooibos).
-4. Utrzymuj odpowiedzi zwięzłe (maksymalnie 3-4 zdania lub 2-3 zwięzłe punkty), bez zbędnego lania wody, w języku polskim.`;
+Wytyczne do rozmowy:
+1. Odpowiadaj bezpośrednio na to, o co pyta lub prosi użytkownik — w naturalnym, ciepłym i elastycznym stylu.
+2. Gdy użytkownik prosi o żart, humor, anegdotę, zagadkę lub rozrywkę (np. żart o kawoszach, porankach bez kawy, kofeinowym szaleństwie) — chętnie i z humorem opowiedz zabawny, błyskotliwy dowcip lub anegdotę! Humor to doskonały sposób na rozładowanie napięcia i odwrócenie uwagi od pokusy.
+3. Gdy użytkownik ma kryzys, odczuwa ochotę na kawę/energetyk, ból głowy lub zjazd energii — okaż empatię, podbuduj go motywacyjnie, wyjaśnij prostym językiem korzyści (regeneracja snu głębokiego NREM-3, normalizacja receptorów adenozyny, stabilna energia) i zaproponuj szybki krok zaradczy (zimna woda, spacer, oddech 4-7-8).
+4. Gdy użytkownik pyta o naukę, zdrowie, sen, dietę, nawyki, produktywność lub po prostu chce porozmawiać o czymkolwiek, by zająć myśli — rozmawiaj otwarcie, mądrze i ciekawie.
+5. Pisz po polsku, żywym i przyjaznym językiem, dbając o przejrzystość odpowiedzi.`;
 
         const contents = updated.map(m => ({
           role: m.role === 'model' ? 'model' : 'user',
@@ -1472,6 +1512,7 @@ Twoje zadanie:
 
   // Open add modal initialized with current date/time
   const handleOpenAddModal = () => {
+    pushModalHistory('add');
     const currentDate = new Date();
     setCustomTimeDate(format(currentDate, 'yyyy-MM-dd'));
     setCustomTimeHour(format(currentDate, 'HH:mm'));
@@ -1481,6 +1522,7 @@ Twoje zadanie:
   };
 
   const handleOpenMilestone = (milestone: Milestone) => {
+    pushModalHistory('milestone');
     setSelectedMilestone(milestone);
     navStateRef.current.selectedMilestone = milestone;
   };
@@ -1491,6 +1533,7 @@ Twoje zadanie:
   };
 
   const handleOpenInstallGuide = () => {
+    pushModalHistory('install-guide');
     setShowInstallGuideModal(true);
     navStateRef.current.showInstallGuideModal = true;
   };
@@ -1501,6 +1544,7 @@ Twoje zadanie:
   };
 
   const handleOpenStartDateModal = () => {
+    pushModalHistory('start-date');
     const d = new Date(statsStartDate);
     setCustomStartInputDate(format(d, 'yyyy-MM-dd'));
     setCustomStartInputHour(format(d, 'HH:mm'));
@@ -1694,6 +1738,7 @@ Twoje zadanie:
   }, [diffSeconds, isClient, notificationPermission, notificationsEnabled]);
 
   const handleOpenResetModal = (type: 'factory' | 'logs' | 'timer') => {
+    pushModalHistory('reset-confirm');
     setResetModalType(type);
     setShowResetConfirmModal(true);
     navStateRef.current.showResetConfirmModal = true;
@@ -1963,13 +2008,27 @@ Twoje zadanie:
     : null;
   const favoriteDrink = favoriteDrinkId ? DRINKS.find(d => d.id === favoriteDrinkId) : null;
 
-  // --- DEEP SLEEP (NREM-3) RECOVERY METRICS (vs 4 coffees/day baseline) ---
-  // Baseline: 4 coffees/day (~360mg caffeine) reduces Deep Sleep by ~30-35% (loss of ~35-45 min of deep restorative sleep each night)
+  // --- DEEP SLEEP (NREM-3) RECOVERY METRICS (vs custom habit baseline) ---
+  // Baseline: priorCaffeineBaseline mg caffeine (e.g. 180, 360, 540, 720)
+  const baselineLossPercent = Math.min(65, Math.max(20, Math.round(18 + (priorCaffeineBaseline / 720) * 40)));
+  const baselineMinutesLost = Math.min(80, Math.max(22, Math.round(20 + (priorCaffeineBaseline / 720) * 50)));
+  
   const deepSleepRecoveryPercent = Math.min(100, Math.round(15 + (Math.min(days, 14) / 14) * 85));
-  const deepSleepMinutesGainedPerNight = Math.min(45, Math.round(12 + (deepSleepRecoveryPercent / 100) * 33));
-  const deepSleepPercentageGain = Math.min(35, Math.round(10 + (deepSleepRecoveryPercent / 100) * 25));
+  const deepSleepMinutesGainedPerNight = Math.min(baselineMinutesLost, Math.round(10 + (deepSleepRecoveryPercent / 100) * (baselineMinutesLost - 10)));
+  const deepSleepPercentageGain = Math.min(baselineLossPercent, Math.round(8 + (deepSleepRecoveryPercent / 100) * (baselineLossPercent - 8)));
   const cleanDaysCountForSleep = cleanDaysSinceStart || 0;
   const totalDeepSleepHoursGained = ((cleanDaysCountForSleep * deepSleepMinutesGainedPerNight) / 60).toFixed(1);
+  const totalDeepSleepMinutesGained = Math.round(cleanDaysCountForSleep * deepSleepMinutesGainedPerNight);
+  const equivalentFullNights = (parseFloat(totalDeepSleepHoursGained) / 1.5).toFixed(1);
+  const sleepQualityScore = Math.min(100, Math.round(55 + (deepSleepRecoveryPercent / 100) * 43));
+
+  const handleSelectSleepBaseline = (mg: number) => {
+    setPriorCaffeineBaseline(mg);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zerocaff_sleep_baseline_mg', mg.toString());
+    }
+    showToast(`Ustawiono dawkę bazową nawyku: ~${mg} mg/dzień`);
+  };
 
   // --- Expanded Time-of-Day Intake Distribution (Rozbudowane Pory Dnia) ---
   const timeBuckets = [
@@ -2817,46 +2876,8 @@ Twoje zadanie:
                   </div>
                 )}
 
-                {/* SOS / CHĘĆ NA KOFEINĘ? CRISIS SUPPORT & AI CHAT BUTTON */}
-                <div className="w-full mt-4">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.015 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleOpenSosModal}
-                    className={`w-full p-4 rounded-3xl border flex items-center justify-between gap-3 shadow-lg transition-all relative overflow-hidden group ${
-                      theme === 'light' 
-                        ? 'bg-gradient-to-r from-rose-50 via-orange-50/70 to-amber-50 border-rose-200 text-rose-950 hover:border-rose-300' 
-                        : 'bg-gradient-to-r from-rose-950/40 via-zinc-900/90 to-amber-950/30 border-rose-500/30 text-zinc-100 hover:border-rose-500/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                        <ShieldAlert size={22} className="animate-pulse" />
-                      </div>
-                      <div className="text-left min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black uppercase tracking-wider text-rose-500">
-                            Chęć na kofeinę? / SOS
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20 flex items-center gap-1">
-                            <Bot size={11} />
-                            AI Coach
-                          </span>
-                        </div>
-                        <p className={`text-xs mt-0.5 truncate ${subTextClasses}`}>
-                          Porozmawiaj z AI, opanuj impuls i sprawdź co zyskasz
-                        </p>
-                      </div>
-                    </div>
-                    <div className="w-9 h-9 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0 group-hover:translate-x-1 transition-transform">
-                      <ChevronRight size={18} />
-                    </div>
-                  </motion.button>
-                </div>
-
                 {/* COLLAPSIBLE MILESTONES SECTION (ZWIJANA DO 2 RZĘDÓW ZE SKROJONYM WIDOKIEM NA KOLEJNY CEL) */}
-                <div className="w-full mt-6">
+                <div className="w-full mt-4">
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div className="flex items-center gap-1.5">
                       <Award size={15} style={{ color: currentAccent.primary }} />
@@ -2921,13 +2942,14 @@ Twoje zadanie:
                             const isUnlocked = diffSeconds >= milestone.seconds;
                             const isNext = milestone.id === nextMilestone.id && !isUnlocked;
                             const info = getMilestoneCountdownInfo(milestone.seconds, diffSeconds, lastIntake);
+                            const progressPercent = Math.min(100, Math.max(0, (diffSeconds / milestone.seconds) * 100));
 
                             return (
                               <motion.button
                                 key={milestone.id}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleOpenMilestone(milestone)}
-                                className={`relative rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all border text-center ${
+                                className={`relative rounded-2xl p-2 flex flex-col items-center justify-center transition-all border text-center ${
                                   isUnlocked
                                     ? `${theme === 'light' ? 'bg-orange-50/80 border-orange-200' : 'bg-zinc-900 border-zinc-700/80 shadow-md'}`
                                     : isNext
@@ -2940,16 +2962,16 @@ Twoje zadanie:
                                 } : {}}
                               >
                                 {/* Top Status Icon */}
-                                <div className="mb-1">
+                                <div className="mb-0.5">
                                   {isUnlocked ? (
                                     <CheckCircle2 
-                                      size={15} 
+                                      size={14} 
                                       style={{ color: currentAccent.primary }}
                                     />
                                   ) : isNext ? (
-                                    <Sparkles size={15} className="text-cyan-400 animate-pulse" />
+                                    <Sparkles size={14} className="text-cyan-400 animate-pulse" />
                                   ) : (
-                                    <Lock size={13} className={muteTextClasses} />
+                                    <Lock size={12} className={muteTextClasses} />
                                   )}
                                 </div>
 
@@ -2961,9 +2983,23 @@ Twoje zadanie:
                                   {milestone.code}
                                 </span>
 
-                                {/* Countdown / Status Micro Badge */}
+                                {/* Visual Progress Bar on the Tile */}
+                                <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1.5 border ${
+                                  theme === 'light' ? 'bg-zinc-200 border-zinc-300' : 'bg-black/60 border-zinc-800'
+                                }`}>
+                                  <div 
+                                    className="h-full rounded-full transition-all duration-300"
+                                    style={{
+                                      width: `${progressPercent}%`,
+                                      backgroundColor: isUnlocked ? '#10b981' : isNext ? '#06b6d4' : currentAccent.primary,
+                                      boxShadow: isNext ? '0 0 6px rgba(6,182,212,0.6)' : isUnlocked ? '0 0 4px rgba(16,185,129,0.4)' : undefined
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Countdown / Status Micro Badge with percentage */}
                                 <span 
-                                  className={`text-[8px] font-bold mt-1 px-1.5 py-0.5 rounded-md truncate max-w-full border ${
+                                  className={`text-[8px] font-bold mt-1 px-1 py-0.5 rounded-md truncate max-w-full border ${
                                     isUnlocked 
                                       ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
                                       : isNext
@@ -2971,7 +3007,7 @@ Twoje zadanie:
                                       : 'border-zinc-500/20 text-zinc-400 bg-zinc-500/10'
                                   }`}
                                 >
-                                  {info.badgeText}
+                                  {isUnlocked ? 'Zdobyty' : `${Math.floor(progressPercent)}% • ${info.badgeText}`}
                                 </span>
 
                                 {/* Glow Indicator for Next Target */}
@@ -2988,6 +3024,44 @@ Twoje zadanie:
                       </div>
                     );
                   })()}
+                </div>
+
+                {/* SOS / CHĘĆ NA KOFEINĘ? CRISIS SUPPORT & AI CHAT BUTTON (PANEL NA SAMYM DOLE EKRANU GŁÓWNEGO) */}
+                <div className="w-full mt-4 mb-2">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleOpenSosModal}
+                    className={`w-full p-4 rounded-3xl border flex items-center justify-between gap-3 shadow-lg transition-all relative overflow-hidden group ${
+                      theme === 'light' 
+                        ? 'bg-gradient-to-r from-rose-50 via-orange-50/70 to-amber-50 border-rose-200 text-rose-950 hover:border-rose-300' 
+                        : 'bg-gradient-to-r from-rose-950/40 via-zinc-900/90 to-amber-950/30 border-rose-500/30 text-zinc-100 hover:border-rose-500/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <ShieldAlert size={22} className="animate-pulse" />
+                      </div>
+                      <div className="text-left min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-rose-500">
+                            Chęć na kofeinę? / SOS
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-500/15 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                            <Bot size={11} />
+                            AI Coach
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-0.5 truncate ${subTextClasses}`}>
+                          Porozmawiaj z AI, opanuj impuls i sprawdź co zyskasz
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-9 h-9 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0 group-hover:translate-x-1 transition-transform">
+                      <ChevronRight size={18} />
+                    </div>
+                  </motion.button>
                 </div>
 
               </motion.div>
@@ -3080,152 +3154,527 @@ Twoje zadanie:
                   </div>
                 )}
 
-                {/* DEEP SLEEP (NREM-3) QUALITY & RECOVERY INDICATOR VS. 4 COFFEES/DAY BASELINE */}
-                <div className={`border rounded-3xl p-5 backdrop-blur-sm relative overflow-hidden transition-all ${cardClasses}`}>
-                  {/* Background Glow */}
+                {/* DEEP SLEEP (NREM-3) QUALITY & RECOVERY INDICATOR (ADVANCED BIOMETRIC HUB) */}
+                <div id="deep-sleep-panel-card" className={`border rounded-3xl p-5 backdrop-blur-sm relative overflow-hidden transition-all shadow-xl ${cardClasses}`}>
+                  {/* Background Ambient Glow */}
                   <div 
-                    className="absolute -top-10 -right-10 w-44 h-44 rounded-full blur-3xl opacity-15 pointer-events-none"
+                    className="absolute -top-12 -right-12 w-64 h-64 rounded-full blur-3xl opacity-20 pointer-events-none"
                     style={{ backgroundColor: '#8b5cf6' }}
                   />
+                  <div 
+                    className="absolute -bottom-12 -left-12 w-52 h-52 rounded-full blur-3xl opacity-10 pointer-events-none"
+                    style={{ backgroundColor: '#06b6d4' }}
+                  />
 
-                  {/* Card Header */}
-                  <div className="flex items-start justify-between mb-4 relative z-10">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3 relative z-10">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
-                        <Moon size={22} className="text-indigo-400" />
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-inner">
+                        <Moon size={24} className="text-indigo-400 animate-pulse" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-black uppercase tracking-wider text-indigo-400">
-                            Faza NREM-3 / Delta
+                            Faza NREM-3 / Fale Delta
                           </span>
                           <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
-                            vs 4 kawy/dzień
+                            Baza: ~{priorCaffeineBaseline} mg/d
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 flex items-center gap-0.5">
+                            <Sparkles size={10} /> Indeks Snu: {sleepQualityScore}/100
                           </span>
                         </div>
-                        <h3 className="text-base font-bold tracking-tight">Zysk Snu Głębokiego (Deep Sleep)</h3>
+                        <h3 className="text-base sm:text-lg font-bold tracking-tight mt-0.5">
+                          Zysk Snu Głębokiego (Deep Sleep)
+                        </h3>
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => setIsDeepSleepDetailsOpen(!isDeepSleepDetailsOpen)}
-                      className={`text-xs px-2.5 py-1 rounded-xl border flex items-center gap-1 font-semibold transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 text-indigo-300`}
+                      className={`text-xs px-2.5 py-1.5 rounded-xl border flex items-center gap-1 font-semibold transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 text-indigo-300 active:scale-95`}
+                      title={isDeepSleepDetailsOpen ? 'Zwiń panel' : 'Rozwiń panel'}
                     >
-                      <span>{isDeepSleepDetailsOpen ? 'Zwiń' : 'Fizjologia'}</span>
-                      <ChevronDown size={13} className={`transition-transform duration-200 ${isDeepSleepDetailsOpen ? 'rotate-180' : ''}`} />
+                      <span>{isDeepSleepDetailsOpen ? 'Zwiń' : 'Rozwiń'}</span>
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isDeepSleepDetailsOpen ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
 
-                  {/* 3 Main Metric Indicators */}
-                  <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
-                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Zysk / Noc</span>
-                      <div className="flex items-baseline gap-0.5 mt-1">
-                        <span className="text-xl sm:text-2xl font-black text-indigo-400 tabular-nums">+{deepSleepMinutesGainedPerNight}</span>
-                        <span className={`text-[10px] font-semibold ${muteTextClasses}`}>min</span>
-                      </div>
-                      <span className="text-[9px] text-indigo-300/80 mt-0.5 font-medium">czystej fazy NREM</span>
-                    </div>
+                  {/* Tab Navigation Buttons */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-2xl border mb-4 relative z-10 overflow-x-auto select-none scrollbar-none" style={{ backgroundColor: theme === 'light' ? 'rgba(244,244,245,0.8)' : 'rgba(24,24,27,0.7)' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSleepPanelTab('overview');
+                        setIsDeepSleepDetailsOpen(true);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        sleepPanelTab === 'overview'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : `${muteTextClasses} hover:text-zinc-200`
+                      }`}
+                    >
+                      <Sparkles size={13} />
+                      <span>Postęp & Metryki</span>
+                    </button>
 
-                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Jakość NREM</span>
-                      <div className="flex items-baseline gap-0.5 mt-1">
-                        <span className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">+{deepSleepPercentageGain}%</span>
-                      </div>
-                      <span className="text-[9px] text-emerald-300/80 mt-0.5 font-medium">głębsza regeneracja</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSleepPanelTab('hypnogram');
+                        setIsDeepSleepDetailsOpen(true);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        sleepPanelTab === 'hypnogram'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : `${muteTextClasses} hover:text-zinc-200`
+                      }`}
+                    >
+                      <Waves size={13} />
+                      <span>Fale Delta & Hypnogram</span>
+                    </button>
 
-                    <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Od Nowa</span>
-                      <div className="flex items-baseline gap-0.5 mt-1">
-                        <span className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">{totalDeepSleepHoursGained}</span>
-                        <span className={`text-[10px] font-semibold ${muteTextClasses}`}>h</span>
-                      </div>
-                      <span className="text-[9px] text-amber-300/80 mt-0.5 font-medium">zyskane od startu</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSleepPanelTab('neuro');
+                        setIsDeepSleepDetailsOpen(true);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        sleepPanelTab === 'neuro'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : `${muteTextClasses} hover:text-zinc-200`
+                      }`}
+                    >
+                      <Brain size={13} />
+                      <span>4 Filary Zdrowia</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSleepPanelTab('calculator');
+                        setIsDeepSleepDetailsOpen(true);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        sleepPanelTab === 'calculator'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : `${muteTextClasses} hover:text-zinc-200`
+                      }`}
+                    >
+                      <SlidersHorizontal size={13} />
+                      <span>Dawka Bazowa</span>
+                    </button>
                   </div>
 
-                  {/* Visual Comparative Progress Bar */}
-                  <div className="space-y-2 relative z-10">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="flex items-center gap-1.5 text-zinc-300">
-                        <Activity size={14} className="text-indigo-400" />
-                        <span>Odzyskanie pełnego potencjału snu:</span>
+                  {/* Collapsed summary strip if user minimized the details */}
+                  {!isDeepSleepDetailsOpen && (
+                    <div 
+                      onClick={() => setIsDeepSleepDetailsOpen(true)}
+                      className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:border-indigo-500/50 ${innerItemBg}`}
+                    >
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="font-bold text-indigo-400">+{deepSleepMinutesGainedPerNight} min/noc</span>
+                        <span className="text-zinc-500">•</span>
+                        <span className="font-bold text-emerald-400">+{deepSleepPercentageGain}% regeneracji</span>
+                        <span className="text-zinc-500">•</span>
+                        <span className="font-bold text-amber-400">+{totalDeepSleepHoursGained}h od startu</span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-indigo-400 flex items-center gap-1">
+                        Pokaż szczegóły <ChevronDown size={13} />
                       </span>
-                      <span className="font-bold text-indigo-400 tabular-nums">{deepSleepRecoveryPercent}%</span>
                     </div>
+                  )}
 
-                    {/* Multi-tier Progress Track */}
-                    <div className={`w-full h-4 rounded-full p-0.5 border relative overflow-hidden flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/50 border-zinc-800'}`}>
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 relative"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${deepSleepRecoveryPercent}%` }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                      >
-                        <span className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                      </motion.div>
-                    </div>
-
-                    {/* Stage Milestones below the bar */}
-                    <div className="grid grid-cols-4 gap-1 text-[9px] font-semibold text-center mt-1">
-                      <div className={`p-1 rounded-lg border ${days >= 0 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
-                        1-2 dni (Start)
-                      </div>
-                      <div className={`p-1 rounded-lg border ${days >= 3 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
-                        3-7 dni (Adenozyna)
-                      </div>
-                      <div className={`p-1 rounded-lg border ${days >= 8 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'border-transparent text-zinc-500'}`}>
-                        8-14 dni (Fale delta)
-                      </div>
-                      <div className={`p-1 rounded-lg border ${days >= 15 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'border-transparent text-zinc-500'}`}>
-                        15+ dni (100% NREM)
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Comparison Context Banner */}
-                  <div className={`mt-3 p-3 rounded-2xl border text-xs flex items-start gap-2.5 ${innerItemBg}`}>
-                    <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                    <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
-                      <strong className="text-zinc-200">Punkt odniesienia:</strong> Wypijanie 4 kaw dziennie (~360 mg) skraca fazę snu głębokiego (NREM-3) średnio o <strong>30–35%</strong> (tracimy ok. <strong>40 minut</strong> kluczowej naprawy komórkowej każdej nocy). Twój organizm odzyskał już <strong>{deepSleepRecoveryPercent}%</strong> naturalnego potencjału regeneracji!
-                    </p>
-                  </div>
-
-                  {/* Expandable Physiology Details */}
-                  <AnimatePresence>
+                  {/* Animated Tab Content */}
+                  <AnimatePresence mode="wait">
                     {isDeepSleepDetailsOpen && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                        key={sleepPanelTab}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.18 }}
+                        className="relative z-10"
                       >
-                        <div className="mt-3 pt-3 border-t border-zinc-500/20 space-y-2 text-xs">
-                          <div className="p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
-                            <h4 className="font-bold text-indigo-400 mb-1 flex items-center gap-1.5">
-                              <Brain size={14} />
-                              Dlaczego kofeina niszczy sen głęboki?
-                            </h4>
-                            <p className={`text-[11px] leading-relaxed ${muteTextClasses}`}>
-                              Kofeina blokuje receptory adenozynowe A1 i A2A. Nawet jeśli zasypiasz bez problemu, stężenie kofeiny we krwi spłaszcza wolnofalowe fale mózgowe delta (0.5–4 Hz), uniemożliwiając mózgowi wejście w najgłębszą fazę NREM-3/4.
-                            </p>
-                          </div>
+                        {/* ================= TAB 1: OVERVIEW / METRICS & TIMELINE ================= */}
+                        {sleepPanelTab === 'overview' && (
+                          <div className="space-y-4">
+                            {/* 3 Main Metric Cards */}
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Zysk / Noc</span>
+                                <div className="flex items-baseline gap-0.5 mt-1">
+                                  <span className="text-xl sm:text-2xl font-black text-indigo-400 tabular-nums">+{deepSleepMinutesGainedPerNight}</span>
+                                  <span className={`text-[10px] font-semibold ${muteTextClasses}`}>min</span>
+                                </div>
+                                <span className="text-[9px] text-indigo-300/80 mt-0.5 font-medium">czystej fazy NREM-3</span>
+                              </div>
 
-                          <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
-                            <h4 className="font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
-                              <Sparkles size={14} />
-                              Co zyskujesz przy abstynencji?
-                            </h4>
-                            <ul className={`text-[11px] space-y-1 list-disc list-inside ${muteTextClasses}`}>
-                              <li><strong>Układ glimfatyczny:</strong> Mózg skutecznie oczyszcza się z neurotoksyn i beta-amyloidu.</li>
-                              <li><strong>Hormon wzrostu (HGH):</strong> Do 70% dobowego wyrzutu HGH następuje właśnie w fazie NREM-3.</li>
-                              <li><strong>Brak porannego zamulenia:</strong> Budzisz się naturalnie wyspany bez konieczności stymulacji.</li>
-                            </ul>
+                              <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Jakość NREM</span>
+                                <div className="flex items-baseline gap-0.5 mt-1">
+                                  <span className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">+{deepSleepPercentageGain}%</span>
+                                </div>
+                                <span className="text-[9px] text-emerald-300/80 mt-0.5 font-medium">amplituda fal Delta</span>
+                              </div>
+
+                              <div className={`p-3 rounded-2xl border flex flex-col justify-between ${innerItemBg}`}>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>Od Nowa</span>
+                                <div className="flex items-baseline gap-0.5 mt-1">
+                                  <span className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">{totalDeepSleepHoursGained}</span>
+                                  <span className={`text-[10px] font-semibold ${muteTextClasses}`}>h</span>
+                                </div>
+                                <span className="text-[9px] text-amber-300/80 mt-0.5 font-medium">zyskane od startu</span>
+                              </div>
+                            </div>
+
+                            {/* Biological Equivalence Banner */}
+                            <div className="p-3.5 rounded-2xl border bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-emerald-500/10 border-indigo-500/25 flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0 text-indigo-300 mt-0.5">
+                                <Sparkles size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block">
+                                  Ekwiwalent Biologiczny
+                                </span>
+                                <p className={`text-xs mt-0.5 leading-relaxed ${subTextClasses}`}>
+                                  Łącznie odzyskane <strong className="text-indigo-300 font-bold">{totalDeepSleepHoursGained} godzin</strong> czystego snu głębokiego to równowartość aż <strong className="text-emerald-400 font-bold">+{equivalentFullNights} pełnych nocy</strong> najgłębszej odnowy komórkowej i neuroprotekcyjnej!
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Multi-tier Progress Track with Stages */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-xs font-semibold">
+                                <span className="flex items-center gap-1.5 text-zinc-300">
+                                  <Activity size={14} className="text-indigo-400" />
+                                  <span>Odzyskanie pełnego potencjału fazy Delta:</span>
+                                </span>
+                                <span className="font-bold text-indigo-400 tabular-nums">{deepSleepRecoveryPercent}%</span>
+                              </div>
+
+                              <div className={`w-full h-4 rounded-full p-0.5 border relative overflow-hidden flex items-center ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/50 border-zinc-800'}`}>
+                                <motion.div
+                                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 relative"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${deepSleepRecoveryPercent}%` }}
+                                  transition={{ duration: 1.2, ease: "easeOut" }}
+                                >
+                                  <span className="absolute right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                </motion.div>
+                              </div>
+
+                              {/* Stage Milestones */}
+                              <div className="grid grid-cols-4 gap-1 text-[9px] font-semibold text-center mt-1">
+                                <div className={`p-1.5 rounded-xl border flex flex-col justify-center transition-all ${days >= 0 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 shadow-sm' : 'border-transparent text-zinc-500'}`}>
+                                  <span className="font-bold">1–2 dni</span>
+                                  <span className="text-[8px] opacity-80 truncate">Kortyzol w dół</span>
+                                </div>
+                                <div className={`p-1.5 rounded-xl border flex flex-col justify-center transition-all ${days >= 3 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 shadow-sm' : 'border-transparent text-zinc-500'}`}>
+                                  <span className="font-bold">3–7 dni</span>
+                                  <span className="text-[8px] opacity-80 truncate">Rebound adenozyny</span>
+                                </div>
+                                <div className={`p-1.5 rounded-xl border flex flex-col justify-center transition-all ${days >= 8 ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 shadow-sm' : 'border-transparent text-zinc-500'}`}>
+                                  <span className="font-bold">8–14 dni</span>
+                                  <span className="text-[8px] opacity-80 truncate">Fale Delta powrót</span>
+                                </div>
+                                <div className={`p-1.5 rounded-xl border flex flex-col justify-center transition-all ${days >= 15 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-sm' : 'border-transparent text-zinc-500'}`}>
+                                  <span className="font-bold">15+ dni</span>
+                                  <span className="text-[8px] opacity-80 truncate">100% NREM-3</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Adenosine Status Callout */}
+                            <div className={`p-3 rounded-2xl border text-xs flex items-start gap-2.5 ${innerItemBg}`}>
+                              <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                              <div className="text-[11px] leading-relaxed">
+                                <strong className="text-zinc-200">Status Receptorów Adenozynowych (A1/A2A):</strong>{' '}
+                                <span className={subTextClasses}>
+                                  Receptory mózgowe są wolne od antagonistów kofeinowych. Presja senności narasta naturalnie w ciągu dnia, pozwalając na natychmiastowe wejście w głębokie fazy snu wolnofalowego bez nocnych mikro-wybudzeń.
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        )}
+
+                        {/* ================= TAB 2: HYPNOGRAM & DELTA WAVES COMPARISON ================= */}
+                        {sleepPanelTab === 'hypnogram' && (
+                          <div className="space-y-4">
+                            {/* Mode Toggle */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-zinc-300">Wizualizacja Architektury Snu</span>
+                              <div className="flex items-center p-0.5 rounded-xl border text-[11px]" style={{ backgroundColor: theme === 'light' ? '#f4f4f5' : '#18181b' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setHypnogramViewMode('waves')}
+                                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                                    hypnogramViewMode === 'waves'
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : `${muteTextClasses} hover:text-zinc-200`
+                                  }`}
+                                >
+                                  Fale Delta (EEG)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setHypnogramViewMode('cycles')}
+                                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                                    hypnogramViewMode === 'cycles'
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : `${muteTextClasses} hover:text-zinc-200`
+                                  }`}
+                                >
+                                  Cykle Nocne (90m)
+                                </button>
+                              </div>
+                            </div>
+
+                            {hypnogramViewMode === 'waves' ? (
+                              /* Interactive EEG Delta Wave Comparison */
+                              <div className={`p-4 rounded-2xl border ${innerItemBg}`}>
+                                <div className="flex items-center justify-between mb-3 text-[11px]">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                                    <span className="font-semibold text-rose-400">Z Kofeiną (Spłaszczona Delta)</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block animate-pulse" />
+                                    <span className="font-semibold text-indigo-400">ZeroCaff (Wysoka Amplituda)</span>
+                                  </div>
+                                </div>
+
+                                {/* SVG Wave Graph */}
+                                <div className="w-full h-32 rounded-xl bg-black/40 border border-zinc-800/80 relative overflow-hidden flex items-center justify-center p-2">
+                                  {/* Grid background lines */}
+                                  <div className="absolute inset-0 grid grid-cols-6 grid-rows-3 opacity-15 pointer-events-none">
+                                    {Array.from({ length: 18 }).map((_, i) => (
+                                      <div key={i} className="border border-indigo-500/20" />
+                                    ))}
+                                  </div>
+
+                                  <svg viewBox="0 0 500 100" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                                    <defs>
+                                      <linearGradient id="zeroCaffWaveGrad" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stopColor="#818cf8" />
+                                        <stop offset="50%" stopColor="#c084fc" />
+                                        <stop offset="100%" stopColor="#34d399" />
+                                      </linearGradient>
+                                    </defs>
+
+                                    {/* Flat caffeine wave (low amplitude, noisy) */}
+                                    <path
+                                      d="M 0 50 Q 25 38, 50 50 T 100 50 T 150 40 T 200 55 T 250 45 T 300 52 T 350 42 T 400 58 T 450 48 T 500 50"
+                                      fill="none"
+                                      stroke="#f43f5e"
+                                      strokeWidth="2"
+                                      strokeDasharray="4 2"
+                                      opacity="0.85"
+                                    />
+
+                                    {/* Rich ZeroCaff Delta wave (high amplitude, deep synchronized 0.5-4Hz) */}
+                                    <motion.path
+                                      d="M 0 50 Q 30 10, 60 50 T 120 50 T 180 12 T 240 50 T 300 88 T 360 50 T 420 15 T 480 50 T 500 50"
+                                      fill="none"
+                                      stroke="url(#zeroCaffWaveGrad)"
+                                      strokeWidth="3.5"
+                                      strokeLinecap="round"
+                                      initial={{ pathLength: 0 }}
+                                      animate={{ pathLength: 1 }}
+                                      transition={{ duration: 1.5, ease: "easeOut" }}
+                                    />
+                                  </svg>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] leading-relaxed">
+                                  <div className="p-2.5 rounded-xl border bg-rose-500/5 border-rose-500/20 text-rose-300">
+                                    <strong className="block text-rose-400 font-bold mb-0.5">Pod wpływem kofeiny:</strong>
+                                    Fale mózgowe są spłaszczone i chaotyczne. Mózg tkwi w płytkim NREM-1/2, a wybudzenia uniemożliwiają głęboką autofagię.
+                                  </div>
+                                  <div className="p-2.5 rounded-xl border bg-indigo-500/5 border-indigo-500/20 text-indigo-300">
+                                    <strong className="block text-indigo-400 font-bold mb-0.5">Stan ZeroCaff:</strong>
+                                    Wysoka amplituda fal Delta (0.5–4 Hz). Neurony pracują synchronicznie, wyzwalając maksymalny wyrzut HGH i naprawę komórkową.
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              /* 90-min Sleep Cycle Progression Breakdown */
+                              <div className={`p-4 rounded-2xl border space-y-3 ${innerItemBg}`}>
+                                <p className={`text-xs ${muteTextClasses}`}>
+                                  Zdrowy sen składa się z 4–5 pełnych 90-minutowych cykli. Najważniejsza regeneracja fizyczna zachodzi w pierwszych dwóch cyklach nocy (23:00 – 02:00):
+                                </p>
+
+                                <div className="space-y-2">
+                                  <div className="p-2.5 rounded-xl border bg-indigo-500/10 border-indigo-500/30 flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center text-[10px]">C1</span>
+                                      <div>
+                                        <span className="font-bold text-indigo-300">Cykl 1 (23:00 – 00:30)</span>
+                                        <span className={`text-[10px] block ${muteTextClasses}`}>Maksymalny blok NREM-3 (45 min regeneracji)</span>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                      Szczyt Delta
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2.5 rounded-xl border bg-purple-500/10 border-purple-500/30 flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 font-bold flex items-center justify-center text-[10px]">C2</span>
+                                      <div>
+                                        <span className="font-bold text-purple-300">Cykl 2 (00:30 – 02:00)</span>
+                                        <span className={`text-[10px] block ${muteTextClasses}`}>Faza NREM-3 (35 min) + szczyt wyrzutu HGH</span>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                      HGH Max
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2.5 rounded-xl border bg-emerald-500/10 border-emerald-500/30 flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold flex items-center justify-center text-[10px]">C3-5</span>
+                                      <div>
+                                        <span className="font-bold text-emerald-300">Cykle 3–5 (02:00 – 07:00)</span>
+                                        <span className={`text-[10px] block ${muteTextClasses}`}>Dominacja fazy REM (marzenia, emocje, pamięć)</span>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      Faza REM
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ================= TAB 3: 4 NEUROLOGICAL & BIOLOGICAL PILLARS ================= */}
+                        {sleepPanelTab === 'neuro' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {/* Pillar 1 */}
+                            <div className="p-3.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1.5">
+                                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                                    <Brain size={14} />
+                                  </div>
+                                  <span>1. Układ Glimfatyczny</span>
+                                </div>
+                                <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                                  W fazie NREM-3 komórki mózgu kurczą się o <strong>60%</strong>, a płyn mózgowo-rdzeniowy wypłukuje beta-amyloid i neurotoksyny 4x intensywniej niż za dnia.
+                                </p>
+                              </div>
+                              <span className="text-[9px] font-bold text-indigo-400/80 mt-2 block uppercase tracking-wider">
+                                💧 Oczyszczanie Mózgu
+                              </span>
+                            </div>
+
+                            {/* Pillar 2 */}
+                            <div className="p-3.5 rounded-2xl bg-purple-500/5 border border-purple-500/20 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 text-purple-400 font-bold text-xs mb-1.5">
+                                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                    <Sparkles size={14} />
+                                  </div>
+                                  <span>2. Hormon Wzrostu (HGH)</span>
+                                </div>
+                                <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                                  Do <strong>70% całodobowego wyrzutu HGH</strong> następuje w pierwszych fazach snu głębokiego. Kofeina wieczorem obcina ten wyrzut nawet o połowę.
+                                </p>
+                              </div>
+                              <span className="text-[9px] font-bold text-purple-400/80 mt-2 block uppercase tracking-wider">
+                                ⚡ Anabolizm & Odnowa Tkanek
+                              </span>
+                            </div>
+
+                            {/* Pillar 3 */}
+                            <div className="p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 text-rose-400 font-bold text-xs mb-1.5">
+                                  <div className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center">
+                                    <Heart size={14} />
+                                  </div>
+                                  <span>3. Spadek Tętna (Nocturnal Dip)</span>
+                                </div>
+                                <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                                  Naturalny spadek tętna i ciśnienia o <strong>10–20%</strong> w nocy chroni naczynia krwionośne przed mikrouszkodzeniami i obniża ryzyko zawału.
+                                </p>
+                              </div>
+                              <span className="text-[9px] font-bold text-rose-400/80 mt-2 block uppercase tracking-wider">
+                                ❤️ Ochrona Układu Krążenia
+                              </span>
+                            </div>
+
+                            {/* Pillar 4 */}
+                            <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs mb-1.5">
+                                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                    <CheckCircle2 size={14} />
+                                  </div>
+                                  <span>4. Konsolidacja Pamięci</span>
+                                </div>
+                                <p className={`text-[11px] leading-relaxed ${subTextClasses}`}>
+                                  Fale Delta przenoszą wiedzę i wspomnienia z pamięci krótkotrwałej (hipokamp) do trwałej kory mózgowej, budując neuroplastyczność.
+                                </p>
+                              </div>
+                              <span className="text-[9px] font-bold text-emerald-400/80 mt-2 block uppercase tracking-wider">
+                                🧩 Trwała Pamięć & Fokus
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ================= TAB 4: PERSONAL BASELINE CALCULATOR ================= */}
+                        {sleepPanelTab === 'calculator' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-zinc-300">Wybierz Twoje Typowe Dawne Spożycie:</span>
+                              <span className="text-[10px] font-bold text-indigo-400">Wpływ na kalkulator</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { mg: 180, label: '1–2 Kawy dziennie', desc: '~180 mg kofeiny', loss: '~25 min/noc (-25% NREM)' },
+                                { mg: 360, label: '3–4 Kawy dziennie', desc: '~360 mg kofeiny (Standard)', loss: '~40 min/noc (-35% NREM)' },
+                                { mg: 540, label: '5–6 Kaw dziennie', desc: '~540 mg kofeiny', loss: '~55 min/noc (-45% NREM)' },
+                                { mg: 720, label: 'Energetyki / Pre-workout', desc: '~720 mg kofeiny', loss: '~70 min/noc (-55% NREM)' },
+                              ].map((item) => {
+                                const isSelected = priorCaffeineBaseline === item.mg;
+                                return (
+                                  <div
+                                    key={item.mg}
+                                    onClick={() => handleSelectSleepBaseline(item.mg)}
+                                    className={`p-3 rounded-2xl border cursor-pointer transition-all active:scale-95 ${
+                                      isSelected
+                                        ? 'bg-indigo-600/20 border-indigo-500 shadow-md ring-1 ring-indigo-500'
+                                        : `${innerItemBg} hover:border-zinc-500`
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs font-bold">{item.label}</span>
+                                      {isSelected && <Check size={14} className="text-indigo-400" />}
+                                    </div>
+                                    <div className={`text-[10px] ${muteTextClasses}`}>{item.desc}</div>
+                                    <div className="text-[10px] font-semibold text-rose-400 mt-1">
+                                      Straty przed abstynencją: {item.loss}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className={`p-3 rounded-2xl border text-[11px] flex items-start gap-2.5 ${innerItemBg}`}>
+                              <Info size={15} className="text-indigo-400 shrink-0 mt-0.5" />
+                              <p className={subTextClasses}>
+                                Zmiana dawki bazowej natychmiast przelicza wszystkie metryki w panelu snu głębokiego, uwzględniając Twój realny profil fizjologiczny.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -5162,146 +5611,148 @@ Twoje zadanie:
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className={`w-full max-w-md border-t sm:rounded-3xl sm:border p-5 pb-8 sm:pb-6 shadow-2xl relative max-h-[92vh] overflow-y-auto ${modalBg}`}
+                className={`w-full max-w-md border-t sm:rounded-3xl sm:border shadow-2xl relative max-h-[90dvh] sm:max-h-[85vh] flex flex-col overflow-hidden ${modalBg}`}
               >
-                {/* Visual drag handle for swipe-down to dismiss on touchscreens */}
-                <div className="flex flex-col items-center justify-center pt-0 pb-3 cursor-grab active:cursor-grabbing select-none">
-                  <div className="w-12 h-1.5 rounded-full bg-zinc-500/40 hover:bg-zinc-400/60 transition-colors" />
-                </div>
-
-                {/* Header with Icon, Name & Phase */}
-                <div className="flex items-start gap-3.5 mb-4">
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center border text-2xl font-black shrink-0 shadow-md"
-                    style={{
-                      backgroundColor: currentAccent.badgeBg,
-                      color: currentAccent.primary,
-                      borderColor: currentAccent.badgeBorder
-                    }}
-                  >
-                    {selectedMilestone.code}
+                {/* Visual drag handle & Top Header (Fixed at top) */}
+                <div className="shrink-0 pt-3 px-5 pb-3 border-b border-zinc-500/10">
+                  <div className="flex flex-col items-center justify-center pb-2 cursor-grab active:cursor-grabbing select-none">
+                    <div className="w-12 h-1.5 rounded-full bg-zinc-500/40 hover:bg-zinc-400/60 transition-colors" />
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
-                      {selectedMilestone.phase}
-                    </span>
-                    <h2 className="text-xl font-bold tracking-tight">{selectedMilestone.name}</h2>
-                    <span 
-                      className="text-xs font-semibold"
-                      style={{ color: currentAccent.primary }}
+
+                  <div className="flex items-start gap-3.5">
+                    <div 
+                      className="w-13 h-13 rounded-2xl flex items-center justify-center border text-xl font-black shrink-0 shadow-md"
+                      style={{
+                        backgroundColor: currentAccent.badgeBg,
+                        color: currentAccent.primary,
+                        borderColor: currentAccent.badgeBorder
+                      }}
                     >
-                      {selectedMilestone.benefit}
-                    </span>
+                      {selectedMilestone.code}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
+                        {selectedMilestone.phase}
+                      </span>
+                      <h2 className="text-lg font-bold tracking-tight truncate">{selectedMilestone.name}</h2>
+                      <span 
+                        className="text-xs font-semibold block truncate"
+                        style={{ color: currentAccent.primary }}
+                      >
+                        {selectedMilestone.benefit}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* COUNTDOWN & MOTIVATION TARGET CARD */}
-                {(() => {
-                  const info = getMilestoneCountdownInfo(selectedMilestone.seconds, diffSeconds, lastIntake);
-                  return (
-                    <div className={`p-4 rounded-2xl border mb-5 backdrop-blur-sm ${innerItemBg}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                          {info.isUnlocked ? 'Status Osiągnięcia' : 'Czas do Osiągnięcia Kamienia'}
-                        </span>
-                        <span 
-                          className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
-                            info.isUnlocked 
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
-                          }`}
-                        >
-                          {info.badgeText}
-                        </span>
-                      </div>
-
-                      {/* Progress Bar towards this specific milestone */}
-                      <div className={`w-full h-3.5 rounded-full p-0.5 border relative mb-2.5 flex items-center ${theme === 'light' ? 'bg-zinc-200 border-zinc-300' : 'bg-black/40 border-zinc-800'}`}>
-                        <div 
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${info.progressPercent}%`,
-                            backgroundColor: info.isUnlocked ? '#10b981' : currentAccent.primary,
-                            boxShadow: `0 0 10px ${info.isUnlocked ? 'rgba(16,185,129,0.4)' : currentAccent.glow}`
-                          }}
-                        />
-                        <span className="absolute right-2 text-[9px] font-extrabold text-zinc-400">
-                          {info.progressPercent}%
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs pt-1">
-                        <span className={muteTextClasses}>
-                          {info.isUnlocked ? 'Wymagany czas:' : 'Pozostało do celu:'}
-                        </span>
-                        <span className="font-bold">
-                          {info.isUnlocked ? formatDuration(selectedMilestone.seconds * 1000) : info.timeRemainingStr}
-                        </span>
-                      </div>
-
-                      {!info.isUnlocked && (
-                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-zinc-500/15 mt-2">
-                          <span className={muteTextClasses}>Przewidywana data zaliczenia:</span>
-                          <span className="font-bold text-cyan-400">
-                            {info.targetDateStr}
+                {/* SCROLLABLE INNER BODY CONTENT */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                  {/* COUNTDOWN & MOTIVATION TARGET CARD */}
+                  {(() => {
+                    const info = getMilestoneCountdownInfo(selectedMilestone.seconds, diffSeconds, lastIntake);
+                    return (
+                      <div className={`p-4 rounded-2xl border backdrop-blur-sm ${innerItemBg}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
+                            {info.isUnlocked ? 'Status Osiągnięcia' : 'Czas do Osiągnięcia Kamienia'}
+                          </span>
+                          <span 
+                            className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                              info.isUnlocked 
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                            }`}
+                          >
+                            {info.badgeText}
                           </span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })()}
 
-                {/* 4 DETAILED EDUCATIONAL & PHYSIOLOGICAL ACCORDIONS/BLOCKS */}
-                <div className="space-y-3 mb-6">
-                  
-                  {/* Block 1: Co dzieje się w organizmie */}
-                  <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
-                    <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider">
-                      <Brain size={15} style={{ color: currentAccent.primary }} />
-                      <span>Fizjologia & Mózg</span>
+                        {/* Progress Bar towards this specific milestone */}
+                        <div className={`w-full h-3.5 rounded-full p-0.5 border relative mb-2.5 flex items-center ${theme === 'light' ? 'bg-zinc-200 border-zinc-300' : 'bg-black/40 border-zinc-800'}`}>
+                          <div 
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${info.progressPercent}%`,
+                              backgroundColor: info.isUnlocked ? '#10b981' : currentAccent.primary,
+                              boxShadow: `0 0 10px ${info.isUnlocked ? 'rgba(16,185,129,0.4)' : currentAccent.glow}`
+                            }}
+                          />
+                          <span className="absolute right-2 text-[9px] font-extrabold text-zinc-400">
+                            {info.progressPercent}%
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1">
+                          <span className={muteTextClasses}>
+                            {info.isUnlocked ? 'Wymagany czas:' : 'Pozostało do celu:'}
+                          </span>
+                          <span className="font-bold">
+                            {info.isUnlocked ? formatDuration(selectedMilestone.seconds * 1000) : info.timeRemainingStr}
+                          </span>
+                        </div>
+
+                        {!info.isUnlocked && (
+                          <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-zinc-500/15 mt-2">
+                            <span className={muteTextClasses}>Przewidywana data zaliczenia:</span>
+                            <span className="font-bold text-cyan-400">
+                              {info.targetDateStr}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 4 DETAILED EDUCATIONAL & PHYSIOLOGICAL ACCORDIONS/BLOCKS */}
+                  <div className="space-y-3">
+                    {/* Block 1: Co dzieje się w organizmie */}
+                    <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
+                      <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider">
+                        <Brain size={15} style={{ color: currentAccent.primary }} />
+                        <span>Fizjologia & Mózg</span>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${subTextClasses}`}>
+                        {selectedMilestone.description}
+                      </p>
                     </div>
-                    <p className={`text-xs leading-relaxed ${subTextClasses}`}>
-                      {selectedMilestone.description}
-                    </p>
+
+                    {/* Block 2: Objawy & Czego się spodziewać */}
+                    <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
+                      <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">
+                        <Activity size={15} />
+                        <span>Objawy & Odczucia</span>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${subTextClasses}`}>
+                        {selectedMilestone.symptoms}
+                      </p>
+                    </div>
+
+                    {/* Block 3: Praktyczne wskazówki & Ulga */}
+                    <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
+                      <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
+                        <Compass size={15} />
+                        <span>Praktyczna Porada</span>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${subTextClasses}`}>
+                        {selectedMilestone.tips}
+                      </p>
+                    </div>
+
+                    {/* Block 4: Wzmocnienie psychologiczne */}
+                    <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
+                      <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                        <Sparkles size={15} />
+                        <span>Korzyść Mentalna</span>
+                      </div>
+                      <p className={`text-xs leading-relaxed font-medium ${theme === 'light' ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                        &quot;{selectedMilestone.mentalBoost}&quot;
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Block 2: Objawy & Czego się spodziewać */}
-                  <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
-                    <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">
-                      <Activity size={15} />
-                      <span>Objawy & Odczucia</span>
-                    </div>
-                    <p className={`text-xs leading-relaxed ${subTextClasses}`}>
-                      {selectedMilestone.symptoms}
-                    </p>
-                  </div>
-
-                  {/* Block 3: Praktyczne wskazówki & Ulga */}
-                  <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
-                    <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
-                      <Compass size={15} />
-                      <span>Praktyczna Porada</span>
-                    </div>
-                    <p className={`text-xs leading-relaxed ${subTextClasses}`}>
-                      {selectedMilestone.tips}
-                    </p>
-                  </div>
-
-                  {/* Block 4: Wzmocnienie psychologiczne */}
-                  <div className={`border rounded-2xl p-4 ${innerItemBg}`}>
-                    <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      <Sparkles size={15} />
-                      <span>Korzyść Mentalna</span>
-                    </div>
-                    <p className={`text-xs leading-relaxed font-medium ${theme === 'light' ? 'text-zinc-800' : 'text-zinc-200'}`}>
-                      &quot;{selectedMilestone.mentalBoost}&quot;
-                    </p>
-                  </div>
-
                 </div>
 
-                {/* SINGLE ACTION BUTTON TO CLOSE MODAL */}
-                <div className="pt-2">
+                {/* STICKY BOTTOM ACTION BAR - GUARANTEED 100% VISIBILITY */}
+                <div className="shrink-0 p-4 border-t border-zinc-500/15 bg-inherit backdrop-blur-md">
                   <button
                     type="button"
                     onClick={handleCloseMilestone}
@@ -5889,9 +6340,11 @@ Twoje zadanie:
                     {/* Quick Suggestion Chips */}
                     <div className="px-4 py-2 border-t border-zinc-800/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
                       {[
-                        "Mam potężną chęć na kawę, pomóż!",
+                        "Opowiedz żart o kawoszu 😂",
+                        "Mam ochotę na kawę, pomóż!",
                         "Co zyskam, jeśli teraz nie ulegnę?",
-                        "Czuję spadek energii, jak go pokonać?",
+                        "Jak naturalnie podnieść energię?",
+                        "Dlaczego kofeina niszczy sen głęboki?",
                         "Ile trwa fala głodu kofeinowego?"
                       ].map((promptText, idx) => (
                         <button
@@ -6270,6 +6723,86 @@ Twoje zadanie:
                           <span>Zaktualizuj teraz</span>
                         </>
                       )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* EXIT APP CONFIRMATION MODAL (PO WYKRYCIU PRZYCISKU WSTECZ NA EKRANIE GŁÓWNYM) */}
+        <AnimatePresence>
+          {showExitConfirmModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowExitConfirmModal(false);
+                navStateRef.current.showExitConfirmModal = false;
+              }}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${modalBg}`}
+              >
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div 
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-lg"
+                    style={{
+                      backgroundColor: currentAccent.badgeBg,
+                      borderColor: currentAccent.badgeBorder,
+                      color: currentAccent.primary
+                    }}
+                  >
+                    <LogOut size={26} className="translate-x-0.5" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-bold tracking-tight">Wyjść z aplikacji?</h3>
+                    <p className={`text-xs mt-2 leading-relaxed ${subTextClasses}`}>
+                      Twój licznik wolności od kofeiny i wszystkie statystyki działają bezpiecznie w tle. Możesz wrócić w dowolnym momencie.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowExitConfirmModal(false);
+                        navStateRef.current.showExitConfirmModal = false;
+                        if (typeof window !== 'undefined') {
+                          try {
+                            // Attempt to close window/tab or go back in history
+                            window.close();
+                            window.history.go(-2);
+                          } catch {}
+                        }
+                      }}
+                      className={`py-3 rounded-2xl border text-xs font-bold transition-all active:scale-95 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 ${innerItemBg}`}
+                    >
+                      Wyjdź
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowExitConfirmModal(false);
+                        navStateRef.current.showExitConfirmModal = false;
+                      }}
+                      className="py-3 rounded-2xl text-white text-xs font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                      style={{
+                        backgroundColor: currentAccent.primary,
+                        boxShadow: `0 0 14px ${currentAccent.glow}`
+                      }}
+                    >
+                      Zostań w aplikacji
                     </button>
                   </div>
                 </div>
