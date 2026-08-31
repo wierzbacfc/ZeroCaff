@@ -563,7 +563,7 @@ function formatDuration(ms: number) {
   return `${m}m ${diffSec % 60}s`;
 }
 
-function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number, lastIntake: number) {
+function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number, lastIntake: number, previousMilestoneSeconds: number = 0) {
   const isUnlocked = diffSeconds >= milestoneSeconds;
   if (isUnlocked) {
     return {
@@ -572,6 +572,7 @@ function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number
       timeRemainingStr: 'Zdobyte!',
       targetDateStr: 'Etap zrealizowany',
       progressPercent: 100,
+      netProgressPercent: 100,
       remainingSec: 0,
     };
   }
@@ -598,7 +599,10 @@ function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number
     timeRemainingStr = `${Math.max(1, m)} min`;
   }
 
-  const progressPercent = Math.min(99, Math.max(0, Math.floor((diffSeconds / milestoneSeconds) * 100)));
+  // Net time calculation: progress within the interval from previous milestone to target milestone
+  const netSpan = Math.max(1, milestoneSeconds - previousMilestoneSeconds);
+  const netElapsed = Math.max(0, diffSeconds - previousMilestoneSeconds);
+  const progressPercent = Math.min(99, Math.max(0, Math.floor((netElapsed / netSpan) * 100)));
 
   return {
     isUnlocked: false,
@@ -606,6 +610,7 @@ function getMilestoneCountdownInfo(milestoneSeconds: number, diffSeconds: number
     timeRemainingStr,
     targetDateStr,
     progressPercent,
+    netProgressPercent: progressPercent,
     remainingSec,
   };
 }
@@ -775,6 +780,21 @@ export default function Page() {
   const [activeRingTooltip, setActiveRingTooltip] = useState<'days' | 'hours' | 'minutes' | 'seconds' | null>(null);
   const [ringTooltipPos, setRingTooltipPos] = useState<{x: number, y: number}>({ x: 0, y: 0 });
 
+  // Active Day Checkpoint Tooltip (punkty kolejnych dni na kole)
+  const [activeDayTooltip, setActiveDayTooltip] = useState<{
+    targetDay: number;
+    isReached: boolean;
+    isNextTarget: boolean;
+    totalHoursRemaining: number;
+    remainingDays: number;
+    remainingHours: number;
+    remainingMins: number;
+    remainingSecs: number;
+    formattedTargetDate: string;
+    milestone?: Milestone;
+  } | null>(null);
+  const [dayTooltipPos, setDayTooltipPos] = useState<{x: number, y: number}>({ x: 0, y: 0 });
+
   // Chart drag to scroll
   const isDraggingChart = useRef(false);
   const startX = useRef(0);
@@ -821,6 +841,26 @@ export default function Page() {
 
   const handleRingLeave = () => {
     setActiveRingTooltip(null);
+  };
+
+  const handleDayCheckpointInteraction = (e: React.MouseEvent | React.TouchEvent, cp: any) => {
+    e.stopPropagation();
+    setActiveDayTooltip(cp);
+    let clientX, clientY;
+    if ('touches' in e && (e as React.TouchEvent).touches.length > 0) {
+      clientX = (e as React.TouchEvent).touches[0].clientX;
+      clientY = (e as React.TouchEvent).touches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    } else {
+      return;
+    }
+    setDayTooltipPos({ x: clientX, y: clientY });
+  };
+
+  const handleDayCheckpointLeave = () => {
+    setActiveDayTooltip(null);
   };
 
   const currentAccent = ACCENT_PALETTES[accentKey] || ACCENT_PALETTES.orange;
@@ -1806,14 +1846,78 @@ Wytyczne do rozmowy:
   const remainingMins = Math.floor((secondsRemainingForMilestone % 3600) / 60);
 
   // --- Triple Ring Progress Calculations ---
-  // Ring 1 (Days): 7-day loop (progress within current 7-day cycle)
-  const daysCycleProgress = Math.min(100, ((days % 7) + (hours / 24)) / 7 * 100);
+  // Ring 1 (Days): 7-day loop (continuous progress within current 7-day cycle)
+  const currentCycleBase = Math.floor(days / 7) * 7;
+  const currentCycleSeconds = (days % 7) * 86400 + hours * 3600 + minutes * 60 + seconds;
+  const daysCycleProgress = Math.min(100, (currentCycleSeconds / (7 * 86400)) * 100);
   // Ring 2 (Hours): 0-24h
   const hoursProgress = Math.min(100, ((hours * 60 + minutes) / (24 * 60)) * 100);
   // Ring 3 (Minutes): 0-60m
   const minutesProgress = Math.min(100, ((minutes * 60 + seconds) / 3600) * 100);
   // Ring 4 (Seconds): 0-60s
   const secondsProgress = Math.min(100, (seconds / 60) * 100);
+
+  // Day Milestone Checkpoints around the Days Circle (7 target points for current 7-day window)
+  const nowDateObj = new Date(now || 0);
+  const lastIntakeMsForDayCp = lastIntake || (now - diffSeconds * 1000);
+  const dayCheckpoints = Array.from({ length: 7 }).map((_, i) => {
+    const dIndex = i + 1; // 1 to 7
+    const targetDay = currentCycleBase + dIndex;
+    const angleDeg = (dIndex / 7) * 360 - 90;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const r = 134; // radius of outer days ring
+    const x = 150 + r * Math.cos(angleRad);
+    const y = 150 + r * Math.sin(angleRad);
+    
+    const isReached = days >= targetDay;
+    const isNextTarget = targetDay === days + 1;
+    const isFuture = targetDay > days + 1;
+    
+    const targetTimestamp = lastIntakeMsForDayCp + (targetDay * 24 * 3600 * 1000);
+    const msRemaining = Math.max(0, targetTimestamp - now);
+    
+    const totalHoursRemaining = Math.floor(msRemaining / (3600 * 1000));
+    const remainingDays = Math.floor(totalHoursRemaining / 24);
+    const remainingHours = totalHoursRemaining % 24;
+    const remainingMins = Math.floor((msRemaining % (3600 * 1000)) / (60 * 1000));
+    const remainingSecs = Math.floor((msRemaining % (60 * 1000)) / 1000);
+    
+    const milestone = MILESTONES.find(m => m.seconds === targetDay * 24 * 3600);
+    
+    let formattedTargetDate = '';
+    if (isClient && now > 0) {
+      const targetDateObj = new Date(targetTimestamp);
+      if (isSameDay(targetDateObj, nowDateObj)) {
+        formattedTargetDate = `Dziś o ${format(targetDateObj, 'HH:mm')}`;
+      } else if (isSameDay(targetDateObj, subDays(nowDateObj, -1))) {
+        formattedTargetDate = `Jutro o ${format(targetDateObj, 'HH:mm')}`;
+      } else {
+        formattedTargetDate = format(targetDateObj, 'EEEE, d MMM, HH:mm', { locale: pl });
+      }
+    }
+
+    return {
+      dIndex,
+      targetDay,
+      angleDeg,
+      x,
+      y,
+      isReached,
+      isNextTarget,
+      isFuture,
+      targetTimestamp,
+      msRemaining,
+      remainingDays,
+      remainingHours,
+      remainingMins,
+      remainingSecs,
+      totalHoursRemaining,
+      formattedTargetDate,
+      milestone,
+    };
+  });
+
+  const nextDayCheckpoint = dayCheckpoints.find(c => c.isNextTarget) || dayCheckpoints[0];
 
   // Thumb position calculations
   const calcThumbPos = (progress: number, radius: number) => {
@@ -2373,6 +2477,78 @@ Wytyczne do rozmowy:
             )}
           </AnimatePresence>
 
+          {/* Day Checkpoint Tooltip (Punkty kolejnych dni na kole) */}
+          <AnimatePresence>
+            {activeDayTooltip && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className={`fixed z-50 px-3.5 py-2.5 rounded-2xl shadow-2xl border pointer-events-none backdrop-blur-md max-w-xs ${
+                  theme === 'light' ? 'bg-white/95 border-zinc-300 text-zinc-900' : 'bg-zinc-900/95 border-zinc-700 text-white'
+                }`}
+                style={{
+                  left: dayTooltipPos.x,
+                  top: dayTooltipPos.y - 70,
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span 
+                    className="w-2.5 h-2.5 rounded-full shrink-0" 
+                    style={{ backgroundColor: activeDayTooltip.isReached ? '#10b981' : currentAccent.primary }} 
+                  />
+                  <span className="text-xs font-black">
+                    Dzień {activeDayTooltip.targetDay} ({activeDayTooltip.targetDay * 24}h)
+                  </span>
+                  {activeDayTooltip.isReached ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                      Osiągnięto
+                    </span>
+                  ) : activeDayTooltip.isNextTarget ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse">
+                      Następny cel
+                    </span>
+                  ) : (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${innerItemBg}`}>
+                      W kolejce
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-1.5 text-[11px] font-medium">
+                  {activeDayTooltip.isReached ? (
+                    <span className="text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 size={12} /> Dzień zaliczony pomyślnie!
+                    </span>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={muteTextClasses}>Pasek dojdzie za:</span>
+                        <strong className="text-amber-500 font-mono font-bold">
+                          {activeDayTooltip.totalHoursRemaining > 24 
+                            ? `${activeDayTooltip.remainingDays}d ${activeDayTooltip.remainingHours}h ${activeDayTooltip.remainingMins}m`
+                            : `${activeDayTooltip.remainingHours}h ${activeDayTooltip.remainingMins}m ${activeDayTooltip.remainingSecs}s`}
+                        </strong>
+                      </div>
+                      <span className={`text-[10px] ${muteTextClasses}`}>
+                        🎯 Cel: {activeDayTooltip.formattedTargetDate}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {activeDayTooltip.milestone && (
+                  <div className="mt-2 pt-1.5 border-t border-zinc-700/40 text-[10px] flex items-center gap-1 text-indigo-400 font-semibold">
+                    <Sparkles size={11} className="text-amber-400 shrink-0" />
+                    <span className="truncate">{activeDayTooltip.milestone.name}: {activeDayTooltip.milestone.benefit}</span>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
             
             {/* VIEW 1: HOME / TIMER */}
@@ -2591,6 +2767,136 @@ Wytyczne do rozmowy:
                       strokeDasharray="2 6"
                     />
 
+                    {/* ================= DAY CHECKPOINTS ON OUTER DAYS RING (7 TARGET POINTS) ================= */}
+                    <g id="day-checkpoints-layer">
+                      {dayCheckpoints.map((cp) => {
+                        const isReached = cp.isReached;
+                        const isNext = cp.isNextTarget;
+                        return (
+                          <g 
+                            key={`day-cp-${cp.targetDay}`} 
+                            className="cursor-pointer"
+                            onMouseEnter={(e) => handleDayCheckpointInteraction(e, cp)}
+                            onMouseMove={(e) => handleDayCheckpointInteraction(e, cp)}
+                            onMouseLeave={handleDayCheckpointLeave}
+                            onTouchStart={(e) => handleDayCheckpointInteraction(e, cp)}
+                            onClick={(e) => handleDayCheckpointInteraction(e, cp)}
+                          >
+                            {/* Animated Radar Pulse for Next Target */}
+                            {isNext && (
+                              <circle
+                                cx={cp.x}
+                                cy={cp.y}
+                                r="15"
+                                fill={currentAccent.primary}
+                                fillOpacity="0.25"
+                                className="animate-ping"
+                                style={{ transformOrigin: `${cp.x}px ${cp.y}px` }}
+                              />
+                            )}
+
+                            {/* Outer dashed ring for Next Target */}
+                            {isNext && (
+                              <circle
+                                cx={cp.x}
+                                cy={cp.y}
+                                r="13"
+                                fill="none"
+                                stroke={currentAccent.primary}
+                                strokeWidth="1.2"
+                                strokeDasharray="3 2"
+                                opacity="0.8"
+                              />
+                            )}
+
+                            {/* Main Checkpoint Node Dot */}
+                            <circle
+                              cx={cp.x}
+                              cy={cp.y}
+                              r={isNext ? 10 : isReached ? 8.5 : 7.5}
+                              fill={
+                                isReached 
+                                  ? currentAccent.primary 
+                                  : isNext 
+                                    ? (theme === 'light' ? '#ffffff' : '#18181b')
+                                    : (theme === 'light' ? '#f8fafc' : '#121319')
+                              }
+                              stroke={
+                                isReached
+                                  ? (theme === 'light' ? '#ffffff' : '#09090b')
+                                  : isNext
+                                    ? currentAccent.primary
+                                    : trackBorderColor
+                              }
+                              strokeWidth={isNext ? 2.5 : isReached ? 2 : 1.5}
+                              filter={isNext || isReached ? "url(#glow-outer)" : undefined}
+                            />
+
+                            {/* Checkpoint Text Label */}
+                            {isReached ? (
+                              <text
+                                x={cp.x}
+                                y={cp.y + 3}
+                                textAnchor="middle"
+                                fontSize="7"
+                                fontWeight="900"
+                                fontFamily="inherit"
+                                fill={theme === 'light' ? '#ffffff' : '#000000'}
+                              >
+                                {cp.targetDay}d
+                              </text>
+                            ) : isNext ? (
+                              <text
+                                x={cp.x}
+                                y={cp.y + 3.2}
+                                textAnchor="middle"
+                                fontSize="8"
+                                fontWeight="900"
+                                fontFamily="inherit"
+                                fill={currentAccent.primary}
+                              >
+                                {cp.targetDay}d
+                              </text>
+                            ) : (
+                              <text
+                                x={cp.x}
+                                y={cp.y + 2.8}
+                                textAnchor="middle"
+                                fontSize="6.5"
+                                fontWeight="700"
+                                fontFamily="inherit"
+                                fill={theme === 'light' ? '#64748b' : '#71717a'}
+                              >
+                                {cp.targetDay}d
+                              </text>
+                            )}
+
+                            {/* Milestone Sparkle Badge Dot if this day has a milestone */}
+                            {cp.milestone && (
+                              <circle
+                                cx={cp.x + (cp.x > 150 ? 5 : -5)}
+                                cy={cp.y - 6}
+                                r="2.5"
+                                fill="#fbbf24"
+                                stroke={theme === 'light' ? '#ffffff' : '#09090b'}
+                                strokeWidth="1"
+                              />
+                            )}
+
+                            {/* Invisible Expanded Hit Area */}
+                            <circle
+                              cx={cp.x}
+                              cy={cp.y}
+                              r="16"
+                              fill="transparent"
+                              stroke="none"
+                              style={{ pointerEvents: 'all' }}
+                            />
+                          </g>
+                        );
+                      })}
+                    </g>
+
                     {/* THUMBS WITH TEXT FOR OUTER 3 RINGS */}
                     {/* Days Thumb */}
                     <motion.g
@@ -2653,12 +2959,67 @@ Wytyczne do rozmowy:
                     </p>
 
                     {/* Digital Precision Ticker */}
-                    <div className={`mt-1.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full border backdrop-blur-md text-[11px] font-mono font-bold tabular-nums shadow-inner ${innerItemBg}`}>
+                    <div className={`mt-1.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full border backdrop-blur-md text-[11px] font-mono font-bold tabular-nums shadow-inner ${innerItemBg}`} suppressHydrationWarning>
                       <span className="w-1.5 h-1.5 rounded-full animate-ping mr-0.5" style={{ backgroundColor: currentAccent.primary }} />
-                      <span>{days > 0 ? `${days}d ` : ''}{hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
+                      <span suppressHydrationWarning>{days > 0 ? `${days}d ` : ''}{hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}</span>
                     </div>
                   </div>
                 </div>
+
+                {/* NEXT DAY TARGET STATUS CHIP / PROGRESS BAR */}
+                {nextDayCheckpoint && (
+                  <div 
+                    onClick={(e) => handleDayCheckpointInteraction(e, nextDayCheckpoint)}
+                    className={`w-full -mt-1 mb-3.5 px-3.5 py-2.5 rounded-2xl border flex items-center justify-between gap-2 backdrop-blur-sm transition-all cursor-pointer hover:border-zinc-500 active:scale-[0.99] ${cardClasses}`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div 
+                        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm"
+                        style={{ 
+                          backgroundColor: `${currentAccent.primary}18`, 
+                          borderColor: `${currentAccent.primary}40`, 
+                          color: currentAccent.primary 
+                        }}
+                      >
+                        <Target size={16} className="animate-pulse" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
+                            Następny punkt:
+                          </span>
+                          <span 
+                            className="text-[10px] font-black px-1.5 py-0.5 rounded-md border shrink-0"
+                            style={{ 
+                              backgroundColor: `${currentAccent.primary}25`, 
+                              borderColor: `${currentAccent.primary}50`, 
+                              color: currentAccent.primary 
+                            }}
+                          >
+                            Dzień {nextDayCheckpoint.targetDay} ({nextDayCheckpoint.targetDay * 24}h)
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-zinc-200 truncate mt-0.5" suppressHydrationWarning>
+                          Pasek dojdzie za: <span className="font-mono text-amber-400 font-extrabold" suppressHydrationWarning>{nextDayCheckpoint.totalHoursRemaining > 24 ? `${nextDayCheckpoint.remainingDays}d ${nextDayCheckpoint.remainingHours}h` : `${nextDayCheckpoint.remainingHours}h ${nextDayCheckpoint.remainingMins}m`}</span>
+                          {nextDayCheckpoint.formattedTargetDate && (
+                            <span className="text-[10px] font-normal text-zinc-400 ml-1.5 hidden xs:inline" suppressHydrationWarning>
+                              ({nextDayCheckpoint.formattedTargetDate})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span 
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg border flex items-center gap-0.5 transition-all hover:bg-white/5 whitespace-nowrap"
+                        style={{ color: currentAccent.primary, borderColor: `${currentAccent.primary}40` }}
+                      >
+                        <span>Szczegóły</span>
+                        <ChevronRight size={12} />
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* EXPLICIT RING VALUE CARDS (COLLAPSIBLE / EXPANDABLE) */}
                 <div className="w-full mb-4">
@@ -2774,8 +3135,8 @@ Wytyczne do rozmowy:
                       style={{ backgroundColor: currentAccent.primary }}
                     />
                     
-                    <div className="flex justify-between items-start mb-3 relative z-10">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex justify-between items-center mb-3 relative z-10 gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div 
                           className="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
                           style={{
@@ -2788,12 +3149,12 @@ Wytyczne do rozmowy:
                         </div>
                         <div className="min-w-0">
                           <span 
-                            className="text-[10px] font-bold uppercase tracking-wider block"
+                            className="text-[10px] font-bold uppercase tracking-wider block whitespace-nowrap"
                             style={{ color: currentAccent.primary }}
                           >
-                            Następny Kamień Milowy
+                            Następny kamień milowy
                           </span>
-                          <h3 className="text-base font-semibold flex items-center gap-1.5 truncate">
+                          <h3 className="text-base font-semibold flex items-center gap-1 truncate">
                             {nextMilestone.name}
                             <ChevronRight size={14} className={`${muteTextClasses} group-hover:translate-x-0.5 transition-transform shrink-0`} />
                           </h3>
@@ -2801,8 +3162,8 @@ Wytyczne do rozmowy:
                       </div>
                       
                       <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-right pb-0.5">
-                          <p className={`text-[10px] font-bold ${muteTextClasses}`}>
+                        <div className="text-right">
+                          <p className={`text-[10px] font-bold whitespace-nowrap ${muteTextClasses}`}>
                             {remainingDays > 0 ? `${remainingDays}d ${remainingHours}h` : `${remainingHours}h ${remainingMins}m`} do celu
                           </p>
                         </div>
@@ -2812,7 +3173,7 @@ Wytyczne do rozmowy:
                             e.stopPropagation();
                             toggleShowMilestoneCard(false);
                           }}
-                          className={`p-1.5 rounded-xl border transition-all ${innerItemBg} hover:border-zinc-500 text-zinc-400 hover:text-zinc-200`}
+                          className={`p-1.5 rounded-xl border transition-all shrink-0 ${innerItemBg} hover:border-zinc-500 text-zinc-400 hover:text-zinc-200`}
                           title="Zwiń / wyłącz tę kartę"
                         >
                           <EyeOff size={13} />
@@ -2878,32 +3239,29 @@ Wytyczne do rozmowy:
 
                 {/* COLLAPSIBLE MILESTONES SECTION (ZWIJANA DO 2 RZĘDÓW ZE SKROJONYM WIDOKIEM NA KOLEJNY CEL) */}
                 <div className="w-full mt-4">
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <div className="flex items-center gap-1.5">
-                      <Award size={15} style={{ color: currentAccent.primary }} />
-                      <h4 className={`text-xs font-bold uppercase tracking-wider ${subTextClasses}`}>
-                        Kamienie Milowe ({MILESTONES.length})
+                  <div className="flex items-center justify-between mb-3 px-1 gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Award size={15} style={{ color: currentAccent.primary }} className="shrink-0" />
+                      <h4 className={`text-xs font-bold uppercase tracking-wider whitespace-nowrap ${subTextClasses}`}>
+                        Kamienie Milowe
                       </h4>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${theme === 'light' ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-white/5 border-white/10 text-zinc-300'}`}>
+                        {MILESTONES.filter(m => diffSeconds >= m.seconds).length}/{MILESTONES.length}
+                      </span>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-medium ${muteTextClasses}`}>
-                        {MILESTONES.filter(m => diffSeconds >= m.seconds).length} / {MILESTONES.length} zdobyte
-                      </span>
-                      
-                      {/* Collapse / Expand Toggle Button */}
-                      <button
-                        onClick={() => setIsMilestonesCollapsed(!isMilestonesCollapsed)}
-                        className={`text-xs px-2.5 py-1 rounded-xl border flex items-center gap-1 font-semibold transition-all ${innerItemBg} hover:border-zinc-500`}
-                        style={{ color: currentAccent.primary }}
-                      >
-                        <span>{isMilestonesCollapsed ? 'Rozwiń wszystkie' : 'Zwiń do 2 rzędów'}</span>
-                        <ChevronDown 
-                          size={14} 
-                          className={`transition-transform duration-300 ${isMilestonesCollapsed ? '' : 'rotate-180'}`} 
-                        />
-                      </button>
-                    </div>
+                    {/* Collapse / Expand Toggle Button */}
+                    <button
+                      onClick={() => setIsMilestonesCollapsed(!isMilestonesCollapsed)}
+                      className={`text-xs px-2.5 py-1 rounded-xl border flex items-center gap-1 font-semibold transition-all shrink-0 whitespace-nowrap ${innerItemBg} hover:border-zinc-500`}
+                      style={{ color: currentAccent.primary }}
+                    >
+                      <span>{isMilestonesCollapsed ? 'Rozwiń' : 'Zwiń'}</span>
+                      <ChevronDown 
+                        size={14} 
+                        className={`transition-transform duration-300 ${isMilestonesCollapsed ? '' : 'rotate-180'}`} 
+                      />
+                    </button>
                   </div>
 
                   {/* Badges Grid (4 columns, collapsible so that 2 rows are shown containing the next milestone) */}
@@ -2939,10 +3297,14 @@ Wytyczne do rozmowy:
 
                         <div className="grid grid-cols-4 gap-2">
                           {visibleMilestones.map((milestone) => {
+                            const milestoneIndex = MILESTONES.findIndex(m => m.id === milestone.id);
+                            const prevMilestoneSeconds = milestoneIndex > 0 ? MILESTONES[milestoneIndex - 1].seconds : 0;
                             const isUnlocked = diffSeconds >= milestone.seconds;
                             const isNext = milestone.id === nextMilestone.id && !isUnlocked;
-                            const info = getMilestoneCountdownInfo(milestone.seconds, diffSeconds, lastIntake);
-                            const progressPercent = Math.min(100, Math.max(0, (diffSeconds / milestone.seconds) * 100));
+                            const info = getMilestoneCountdownInfo(milestone.seconds, diffSeconds, lastIntake, prevMilestoneSeconds);
+                            const netSpan = Math.max(1, milestone.seconds - prevMilestoneSeconds);
+                            const netElapsed = Math.max(0, diffSeconds - prevMilestoneSeconds);
+                            const progressPercent = isUnlocked ? 100 : Math.min(100, Math.max(0, (netElapsed / netSpan) * 100));
 
                             return (
                               <motion.button
@@ -2999,7 +3361,7 @@ Wytyczne do rozmowy:
 
                                 {/* Countdown / Status Micro Badge with percentage */}
                                 <span 
-                                  className={`text-[8px] font-bold mt-1 px-1 py-0.5 rounded-md truncate max-w-full border ${
+                                  className={`text-[8px] font-bold mt-1 px-1 py-0.5 rounded-md truncate w-full border block text-center leading-tight whitespace-nowrap ${
                                     isUnlocked 
                                       ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
                                       : isNext
@@ -3078,17 +3440,17 @@ Wytyczne do rozmowy:
                 className="px-6 space-y-4"
               >
                 {/* Stats Highlights Header */}
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <h2 className="text-xl font-bold tracking-tight">Centrum Statystyk</h2>
-                    <p className={`text-xs ${muteTextClasses}`}>
+                <div className="flex items-center justify-between pt-2 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-bold tracking-tight truncate">Centrum Statystyk</h2>
+                    <p className={`text-xs truncate ${muteTextClasses}`}>
                       Liczone od {format(new Date(statsStartDate), 'd MMMM yyyy', { locale: pl })} • <span className="font-semibold text-emerald-400">{cleanDaysSinceStart} czystych dni ({cleanDaysSinceStartPercent}%)</span>
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => navigateToView('settings')}
-                    className="px-3 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5 transition-all hover:opacity-80 active:scale-95 shadow-sm"
+                    className="px-2.5 py-1.5 rounded-full border text-xs font-semibold flex items-center gap-1.5 shrink-0 whitespace-nowrap transition-all hover:opacity-80 active:scale-95 shadow-sm"
                     style={{
                       backgroundColor: currentAccent.badgeBg,
                       color: currentAccent.primary,
@@ -3683,25 +4045,25 @@ Wytyczne do rozmowy:
                 {/* Consumption Chart with Daily 60-Day Horizontal Scroll & Weekly Mode */}
                 <div className={`border rounded-3xl p-5 pt-6 backdrop-blur-sm ${cardClasses}`}>
                   {/* Header with Title and Mode Switcher */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={18} style={{ color: currentAccent.primary }} />
-                      <div>
-                        <h3 className="text-xs font-bold uppercase tracking-wider">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <TrendingUp size={18} className="shrink-0" style={{ color: currentAccent.primary }} />
+                      <div className="min-w-0">
+                        <h3 className="text-xs font-bold uppercase tracking-wider truncate">
                           Wykres Spożycia & Trend
                         </h3>
-                        <span className={`text-[10px] ${muteTextClasses}`}>
+                        <span className={`text-[10px] truncate block ${muteTextClasses}`}>
                           {chartViewMode === 'daily' ? 'Ostatnie 60 dni (przewijane poziomo)' : 'Ostatnie 12 tygodni (zagregowane)'}
                         </span>
                       </div>
                     </div>
 
                     {/* Mode Toggle Switch */}
-                    <div className={`flex items-center p-1 rounded-2xl border self-start sm:self-auto ${innerItemBg}`}>
+                    <div className={`flex items-center p-1 rounded-2xl border self-start sm:self-auto shrink-0 ${innerItemBg}`}>
                       <button
                         type="button"
                         onClick={() => setChartViewMode('daily')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
                           chartViewMode === 'daily'
                             ? 'text-white shadow-md'
                             : `${muteTextClasses} hover:text-zinc-200`
@@ -3716,7 +4078,7 @@ Wytyczne do rozmowy:
                       <button
                         type="button"
                         onClick={() => setChartViewMode('weekly')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
                           chartViewMode === 'weekly'
                             ? 'text-white shadow-md'
                             : `${muteTextClasses} hover:text-zinc-200`
@@ -3733,82 +4095,82 @@ Wytyczne do rozmowy:
 
                   {/* Summary Metric Strip */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
-                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        {chartViewMode === 'daily' ? 'Czyste dni (od startu)' : 'Czyste tygodnie'}
+                    <div className={`p-2.5 rounded-2xl border text-center min-w-0 ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider truncate ${muteTextClasses}`}>
+                        {chartViewMode === 'daily' ? 'Czyste dni' : 'Czyste tyg.'}
                       </div>
-                      <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                      <div className="text-sm font-bold text-emerald-400 mt-0.5 truncate">
                         {chartViewMode === 'daily' ? `${cleanDaysSinceStart} / ${totalTrackedDaysCount}` : `${cleanWeeksCount} / 12`}
                       </div>
                     </div>
-                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
-                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        {chartViewMode === 'daily' ? 'Śr. dzienna (od startu)' : 'Śr. tygodniowa'}
+                    <div className={`p-2.5 rounded-2xl border text-center min-w-0 ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider truncate ${muteTextClasses}`}>
+                        {chartViewMode === 'daily' ? 'Śr. dzienna' : 'Śr. tyg.'}
                       </div>
-                      <div className="text-sm font-bold mt-0.5" style={{ color: currentAccent.primary }}>
+                      <div className="text-sm font-bold mt-0.5 truncate" style={{ color: currentAccent.primary }}>
                         {chartViewMode === 'daily' ? `~${avgDailyMgSinceStart} mg` : `~${avgWeeklyMg} mg`}
                       </div>
                     </div>
-                    <div className={`p-2.5 rounded-2xl border text-center ${innerItemBg}`}>
-                      <div className={`text-[9px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                        {chartViewMode === 'daily' ? 'Suma (od startu)' : 'Suma kofeiny'}
+                    <div className={`p-2.5 rounded-2xl border text-center min-w-0 ${innerItemBg}`}>
+                      <div className={`text-[9px] font-bold uppercase tracking-wider truncate ${muteTextClasses}`}>
+                        Suma kofeiny
                       </div>
-                      <div className="text-sm font-bold mt-0.5">
+                      <div className="text-sm font-bold mt-0.5 truncate">
                         {chartViewMode === 'daily' ? `${totalMgSinceStart} mg` : `${totalWeeklyMg} mg`}
                       </div>
                     </div>
                   </div>
 
                   {/* Dynamic Trend Indicator Banner */}
-                  <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-2xl border text-xs font-medium bg-zinc-500/5">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-2xl border text-xs font-medium bg-zinc-500/5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 truncate">
                       {chartViewMode === 'daily' ? (
                         total60DayMg === 0 ? (
                           <>
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-emerald-500 font-bold">0 mg w 60 dniach – 100% Czystości! 🔥</span>
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            <span className="text-emerald-500 font-bold truncate">0 mg w 60 dniach – 100% Czystości! 🔥</span>
                           </>
                         ) : isDeclining60 ? (
                           <>
-                            <TrendingDown size={15} className="text-emerald-500" />
-                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercent60}%) w 60 dniach – Brawo!</span>
+                            <TrendingDown size={15} className="text-emerald-500 shrink-0" />
+                            <span className="text-emerald-500 font-bold truncate">Trend Spadkowy (-{trendPercent60}%) w 60 dniach – Brawo!</span>
                           </>
                         ) : isIncreasing60 ? (
                           <>
-                            <TrendingUp size={15} className="text-rose-500" />
-                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercent60}%) w 60 dniach – Zadbaj o limit</span>
+                            <TrendingUp size={15} className="text-rose-500 shrink-0" />
+                            <span className="text-rose-500 font-bold truncate">Trend Wzrostowy (+{trendPercent60}%) – Zadbaj o limit</span>
                           </>
                         ) : (
                           <>
-                            <Activity size={15} style={{ color: currentAccent.primary }} />
-                            <span className="font-bold">Trend Stabilny – Stała kontrola nawyku</span>
+                            <Activity size={15} className="shrink-0" style={{ color: currentAccent.primary }} />
+                            <span className="font-bold truncate">Trend Stabilny – Stała kontrola nawyku</span>
                           </>
                         )
                       ) : (
                         totalWeeklyMg === 0 ? (
                           <>
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-emerald-500 font-bold">0 mg w całym kwartale – Mistrzowska dyscyplina! 🔥</span>
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            <span className="text-emerald-500 font-bold truncate">0 mg w całym kwartale – Mistrzowska dyscyplina! 🔥</span>
                           </>
                         ) : isDecliningW ? (
                           <>
-                            <TrendingDown size={15} className="text-emerald-500" />
-                            <span className="text-emerald-500 font-bold">Trend Spadkowy (-{trendPercentW}%) tydzień do tygodnia</span>
+                            <TrendingDown size={15} className="text-emerald-500 shrink-0" />
+                            <span className="text-emerald-500 font-bold truncate">Trend Spadkowy (-{trendPercentW}%) tydzień do tygodnia</span>
                           </>
                         ) : isIncreasingW ? (
                           <>
-                            <TrendingUp size={15} className="text-rose-500" />
-                            <span className="text-rose-500 font-bold">Trend Wzrostowy (+{trendPercentW}%) w skali tygodni</span>
+                            <TrendingUp size={15} className="text-rose-500 shrink-0" />
+                            <span className="text-rose-500 font-bold truncate">Trend Wzrostowy (+{trendPercentW}%) w skali tygodni</span>
                           </>
                         ) : (
                           <>
-                            <Activity size={15} style={{ color: currentAccent.primary }} />
-                            <span className="font-bold">Stabilne spożycie tygodniowe</span>
+                            <Activity size={15} className="shrink-0" style={{ color: currentAccent.primary }} />
+                            <span className="font-bold truncate">Stabilne spożycie tygodniowe</span>
                           </>
                         )
                       )}
                     </div>
-                    <span className={`text-[10px] hidden xs:inline ${muteTextClasses}`}>Linia przerywana: Trend</span>
+                    <span className={`text-[10px] hidden xs:inline shrink-0 ${muteTextClasses}`}>Linia przerywana: Trend</span>
                   </div>
 
                   {/* Horizontal Scroll Helpers for 60-day daily view */}
@@ -4099,13 +4461,13 @@ Wytyczne do rozmowy:
                 <div className={`border rounded-3xl p-5 backdrop-blur-sm ${cardClasses}`}>
                   <div 
                     onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
-                    className="flex items-center justify-between cursor-pointer select-none group"
+                    className="flex items-center justify-between cursor-pointer select-none group gap-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold uppercase tracking-wider truncate">
                         Rejestr Zdarzeń
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${innerItemBg} ${muteTextClasses}`}>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap ${innerItemBg} ${muteTextClasses}`}>
                         {logs.length} {logs.length === 1 ? 'wpis' : logs.length > 1 && logs.length < 5 ? 'wpisy' : 'wpisów'}
                       </span>
                     </div>
@@ -4116,7 +4478,7 @@ Wytyczne do rozmowy:
                         e.stopPropagation();
                         setIsHistoryCollapsed(!isHistoryCollapsed);
                       }}
-                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${innerItemBg} hover:opacity-90`}
+                      className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border shrink-0 whitespace-nowrap transition-all ${innerItemBg} hover:opacity-90`}
                       style={{ color: currentAccent.primary }}
                     >
                       <span>{isHistoryCollapsed ? 'Rozwiń' : 'Zwiń'}</span>
@@ -4139,21 +4501,21 @@ Wytyczne do rozmowy:
                         {(isHistoryCollapsed ? logs.slice(0, 3) : logs).map(log => {
                           const drink = DRINKS.find(d => d.id === log.drinkId) || DRINKS[0];
                           return (
-                            <div key={log.id} className={`rounded-2xl p-3 flex items-center justify-between border ${innerItemBg} transition-all`}>
-                               <div className="flex items-center gap-3">
-                                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${drink.color}`}>
+                            <div key={log.id} className={`rounded-2xl p-3 flex items-center justify-between border gap-2.5 ${innerItemBg} transition-all`}>
+                               <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${drink.color}`}>
                                     <drink.icon size={16} />
                                   </div>
-                                  <div>
-                                    <p className="font-semibold text-sm">{drink.name}</p>
-                                    <p className={`text-[11px] font-medium ${muteTextClasses}`}>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-sm truncate">{drink.name}</p>
+                                    <p className={`text-[11px] font-medium truncate ${muteTextClasses}`}>
                                       {format(new Date(log.timestamp), 'd MMM, HH:mm', { locale: pl })} • {log.mg} mg
                                     </p>
                                   </div>
-                               </div>
-                               <button 
+                                </div>
+                                <button 
                                 onClick={() => removeLog(log.id)}
-                                className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                                className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors shrink-0"
                                 title="Usuń wpis"
                                >
                                  <X size={15} />
@@ -5619,7 +5981,7 @@ Wytyczne do rozmowy:
                     <div className="w-12 h-1.5 rounded-full bg-zinc-500/40 hover:bg-zinc-400/60 transition-colors" />
                   </div>
 
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     <div 
                       className="w-13 h-13 rounded-2xl flex items-center justify-center border text-xl font-black shrink-0 shadow-md"
                       style={{
@@ -5630,8 +5992,8 @@ Wytyczne do rozmowy:
                     >
                       {selectedMilestone.code}
                     </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block truncate">
                         {selectedMilestone.phase}
                       </span>
                       <h2 className="text-lg font-bold tracking-tight truncate">{selectedMilestone.name}</h2>
@@ -5649,12 +6011,14 @@ Wytyczne do rozmowy:
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                   {/* COUNTDOWN & MOTIVATION TARGET CARD */}
                   {(() => {
-                    const info = getMilestoneCountdownInfo(selectedMilestone.seconds, diffSeconds, lastIntake);
+                    const selMilestoneIndex = MILESTONES.findIndex(m => m.id === selectedMilestone.id);
+                    const selPrevMilestoneSeconds = selMilestoneIndex > 0 ? MILESTONES[selMilestoneIndex - 1].seconds : 0;
+                    const info = getMilestoneCountdownInfo(selectedMilestone.seconds, diffSeconds, lastIntake, selPrevMilestoneSeconds);
                     return (
                       <div className={`p-4 rounded-2xl border backdrop-blur-sm ${innerItemBg}`}>
                         <div className="flex items-center justify-between mb-2">
                           <span className={`text-[10px] font-bold uppercase tracking-wider ${muteTextClasses}`}>
-                            {info.isUnlocked ? 'Status Osiągnięcia' : 'Czas do Osiągnięcia Kamienia'}
+                            {info.isUnlocked ? 'Status Osiągnięcia' : 'Czas do Osiągnięcia Kamienia (Netto)'}
                           </span>
                           <span 
                             className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
